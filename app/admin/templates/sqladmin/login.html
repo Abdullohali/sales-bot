@@ -1,0 +1,55 @@
+{# Override of sqladmin/login.html: theme, icons, language switcher, translated error message. #}
+{% extends "sqladmin/base.html" %}
+
+{% block head %}
+{% include "_theme_head.html" %}
+{% endblock %}
+
+{% block body %}
+<div class="app-login d-flex flex-column align-items-center justify-content-center px-3 py-4">
+  <form class="card" action="{{ url_for('admin:login') }}" method="POST" autocomplete="off">
+    <div class="card-body p-4 p-sm-5">
+      <div class="text-center mb-4">
+        <span class="app-brand-icon"><i class="fa-solid fa-basket-shopping"></i></span>
+        <h2 class="mb-1">{{ admin.title }}</h2>
+        <div class="text-secondary">{{ _("Login to %(title)s", title=admin.title) }}</div>
+      </div>
+
+      {% if error %}
+      <div class="alert alert-danger d-flex align-items-center gap-2 py-2">
+        <i class="fa-solid fa-circle-exclamation"></i><span>{{ t("p.err.login") }}</span>
+      </div>
+      {% endif %}
+
+      <div class="mb-3">
+        <label class="form-label">{{ _("Username") }}</label>
+        <div class="input-icon">
+          <span class="input-icon-addon"><i class="fa-regular fa-user"></i></span>
+          <input name="username" type="text" class="form-control{% if error %} is-invalid{% endif %}"
+            placeholder="{{ _('Enter username') }}" autocomplete="username" autofocus required>
+        </div>
+      </div>
+      <div class="mb-4">
+        <label class="form-label">{{ _("Password") }}</label>
+        <div class="input-icon">
+          <span class="input-icon-addon"><i class="fa-solid fa-lock"></i></span>
+          <input name="password" type="password" class="form-control{% if error %} is-invalid{% endif %}"
+            placeholder="{{ _('Password') }}" autocomplete="current-password" required>
+        </div>
+      </div>
+      <button type="submit" class="btn btn-primary w-100 py-2">
+        <i class="fa-solid fa-right-to-bracket me-2"></i>{{ _("Login") }}</button>
+    </div>
+  </form>
+
+  <div class="app-lang mt-4 d-flex gap-1">
+    {% for code, label in lang_names.items() %}
+      {% if code == panel_lang() %}
+        <span>{{ label }}</span>
+      {% else %}
+        <a href="{{ request.url.include_query_params(lang=code) }}">{{ label }}</a>
+      {% endif %}
+    {% endfor %}
+  </div>
+</div>
+{% endblock %}

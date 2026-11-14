@@ -1,0 +1,117 @@
+{# Dashboard (home page). Data: app/admin/dashboard.py #}
+{% extends "sqladmin/layout.html" %}
+
+{% block content_header %}
+<div class="row align-items-center">
+  <div class="col">
+    <div class="page-pretitle">{{ d.today.isoformat() }}</div>
+    <h2 class="page-title">{{ t("p.d.hello", name=request.session.get("username", "")) }}</h2>
+  </div>
+</div>
+{% endblock %}
+
+{% block content %}
+{% set stats = [
+  ("sack-dollar", "blue", t("p.d.today_total"), fmt(d.today_total)),
+  ("receipt", "green", t("p.d.today_invoices"), d.today_count),
+  ("store", "amber", t("p.d.clients"), d.clients),
+  ("apple-whole", "violet", t("p.d.products"), d.products),
+  ("truck", "sky", t("p.d.couriers"), d.couriers),
+] %}
+<div class="col-12">
+  <div class="row row-deck row-cards g-3">
+{% for icon, tone, label, value in stats %}
+<div class="col-sm-6 {{ 'col-xl-3' if loop.first else 'col-xl' }}">
+  <div class="card app-hover">
+    <div class="app-stat">
+      <span class="app-stat-icon app-tone-{{ tone }}"><i class="fa-solid fa-{{ icon }}"></i></span>
+      <div class="min-w-0">
+        <div class="app-stat-label">{{ label }}</div>
+        <div class="app-stat-value">{{ value }}</div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endfor %}
+  </div>
+</div>
+
+<div class="col-lg-8">
+  <div class="card">
+    <div class="card-header">
+      <h3 class="card-title"><i class="fa-solid fa-chart-column text-primary me-2"></i>{{ t("p.d.week") }}</h3>
+      <div class="ms-auto text-secondary small">{{ t("p.r.sum") }}: <b class="text-body">{{ fmt(d.week_total) }}</b></div>
+    </div>
+    <div class="card-body d-flex flex-column">
+      <div class="app-bars">
+        {% for b in d.bars %}
+        <div class="app-bar{% if b.is_today %} is-today{% endif %}"
+          title="{{ b.day.isoformat() }} · {{ fmt(b.total) }} · {{ t('p.d.invoices_n', n=b.count) }}">
+          <div class="app-bar-fill" style="height: {{ [b.height, 2] | max }}%; animation-delay: {{ loop.index0 * 40 }}ms"></div>
+          <div class="app-bar-label">{{ b.day.strftime("%d.%m") }}</div>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="col-lg-4">
+  <div class="card">
+    <div class="card-header">
+      <h3 class="card-title"><i class="fa-solid fa-bolt text-primary me-2"></i>{{ t("p.d.quick") }}</h3>
+    </div>
+    <div class="card-body p-2">
+      {% set links = [
+        ("chart-line", "blue", t("p.reports"), url_for("admin:view-reports"), True),
+        ("store", "amber", t("p.clients"), url_for("admin:list", identity="client"), True),
+        ("apple-whole", "violet", t("p.products"), url_for("admin:list", identity="product"), True),
+        ("truck", "sky", t("p.couriers"), url_for("admin:list", identity="courier"), True),
+        ("file-invoice", "green", t("p.invoices"), url_for("admin:list", identity="sale"), True),
+      ] %}
+      {% for icon, tone, label, href, _show in links %}
+      <a class="app-quick" href="{{ href }}">
+        <span class="app-stat-icon app-tone-{{ tone }}"><i class="fa-solid fa-{{ icon }}"></i></span>
+        <span class="fw-medium">{{ label }}</span>
+        <i class="fa-solid fa-arrow-right"></i>
+      </a>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+
+<div class="col-12">
+  <div class="card">
+    <div class="card-header">
+      <h3 class="card-title"><i class="fa-solid fa-file-invoice text-primary me-2"></i>{{ t("p.d.recent") }}</h3>
+      <a class="ms-auto btn btn-sm btn-light-soft" href="{{ url_for('admin:list', identity='sale') }}">
+        {{ t("p.d.all") }} <i class="fa-solid fa-arrow-right ms-1"></i>
+      </a>
+    </div>
+    {% if d.recent %}
+    <div class="table-responsive">
+      <table class="table table-vcenter card-table mb-0">
+        <thead>
+          <tr>
+            <th>{{ t("p.f.no") }}</th><th>{{ t("p.f.date") }}</th><th>{{ t("p.f.client") }}</th>
+            <th class="text-end">{{ t("p.f.total") }}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for s, total in d.recent %}
+          <tr>
+            <td><a href="{{ url_for('admin:details', identity='sale', pk=s.id) }}" class="fw-semibold">№{{ s.id }}</a></td>
+            <td class="text-secondary">{{ s.sale_date.isoformat() }}</td>
+            <td>{{ s.client.name }}</td>
+            <td class="text-end fw-semibold">{{ fmt(total) }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="app-empty"><i class="fa-solid fa-box-open"></i>{{ t("p.d.empty") }}</div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

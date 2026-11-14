@@ -1,0 +1,54 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: test
+          POSTGRES_PASSWORD: test
+          POSTGRES_DB: test
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U test" --health-interval 5s --health-timeout 3s --health-retries 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          python-version: "3.12"
+      - run: uv sync --frozen
+      - run: uv run ruff check app tests
+      - run: uv run ruff format --check app tests
+      - name: tests (SQLite)
+        run: uv run pytest -q
+      - name: migrations apply cleanly and match models (PostgreSQL)
+        run: uv run alembic upgrade head && uv run alembic check && uv run alembic downgrade base
+        env:
+          DATABASE_URL: postgresql+asyncpg://test:test@localhost:5432/test
+      - name: tests (PostgreSQL)
+        run: uv run pytest -q
+        env:
+          TEST_DATABASE_URL: postgresql+asyncpg://test:test@localhost:5432/test
+
+  deploy:
+    needs: test
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && vars.DEPLOY_ENABLED == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          script: |
+            cd /opt/sales-bot
+            git pull --ff-only
+            docker compose up -d --build
+            docker image prune -f
