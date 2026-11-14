@@ -14,7 +14,7 @@ os.environ.setdefault("COMPANY_INN", "123456789")
 import pytest  # noqa: E402
 from sqlalchemy import event  # noqa: E402
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine  # noqa: E402
-from sqlalchemy.pool import StaticPool  # noqa: E402
+from sqlalchemy.pool import NullPool, StaticPool  # noqa: E402
 
 from app.db.models import Base  # noqa: E402
 
@@ -23,7 +23,12 @@ TEST_DB_URL = os.environ.get("TEST_DATABASE_URL", "sqlite+aiosqlite://")
 
 @pytest.fixture
 async def engine():
-    kwargs = {"poolclass": StaticPool, "connect_args": {"check_same_thread": False}} if "sqlite" in TEST_DB_URL else {}
+    if "sqlite" in TEST_DB_URL:
+        kwargs = {"poolclass": StaticPool, "connect_args": {"check_same_thread": False}}
+    else:
+        # The admin panel tests call the app through TestClient, which runs it in another event loop;
+        # asyncpg connections are bound to their loop, so they must not be reused from a pool.
+        kwargs = {"poolclass": NullPool}
     eng = create_async_engine(TEST_DB_URL, **kwargs)
     if "sqlite" in TEST_DB_URL:
         # SQLite's built-in lower() is ASCII-only; PostgreSQL handles Cyrillic natively.

@@ -48,7 +48,15 @@ jobs:
           username: ${{ secrets.DEPLOY_USER }}
           key: ${{ secrets.DEPLOY_SSH_KEY }}
           script: |
-            cd /opt/sales-bot
+            set -e
+            cd ~/sales-bot
             git pull --ff-only
             docker compose up -d --build
+            # wait until the app passes its Docker healthcheck (migrations + startup), fail the job otherwise
+            for i in $(seq 1 30); do
+              [ "$(docker inspect -f '{{.State.Health.Status}}' "$(docker compose ps -q app)")" = healthy ] && break
+              sleep 5
+            done
+            docker compose ps
+            [ "$(docker inspect -f '{{.State.Health.Status}}' "$(docker compose ps -q app)")" = healthy ] || { docker compose logs --tail 50 app; exit 1; }
             docker image prune -f
