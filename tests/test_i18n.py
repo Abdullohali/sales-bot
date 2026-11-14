@@ -100,7 +100,7 @@ async def test_unknown_telegram_language_uses_default(h):
 async def test_stranger_gets_no_access_in_own_language(h):
     h.language_codes[777] = "en"
     out = await h.text(777, "hi")
-    assert "No access" in texts(out) and "777" in texts(out)
+    assert t("en", "auth.ask_phone") in texts(out)
 
 
 async def test_lang_command_switches_and_persists(h, session):

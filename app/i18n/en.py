@@ -298,4 +298,15 @@ MESSAGES: dict[str, str] = {
     "p.d.all": "All",
     "p.d.empty": "No invoices yet",
     "p.d.invoices_n": "invoices: {n}",
+    # ---------- login by phone ----------
+    "btn.share_phone": "📱 Share phone number",
+    "auth.ask_phone": "To sign in, share your phone number with the button below.",
+    "auth.not_own": "Please share your own number with the button.",
+    "auth.not_found": "⛔ This number is not in the staff list.\nAsk an administrator to add you under «Staff» in the admin panel, then press /start.\nYour ID: {user_id}",
+    "p.staff": "Staff member",
+    "p.staff_plural": "Staff",
+    "p.f.phone": "Phone",
+    "p.role.courier": "Courier",
+    "p.err.bad_phone": "Invalid phone number. Example: +998 90 123 45 67",
+    "p.err.phone_taken": "This number already belongs to another staff member.",
 }

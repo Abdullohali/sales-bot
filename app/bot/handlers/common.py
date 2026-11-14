@@ -1,19 +1,33 @@
 from aiogram import F, Router
 from aiogram.filters import Command, CommandStart
 from aiogram.fsm.context import FSMContext
-from aiogram.types import CallbackQuery, Message
+from aiogram.types import CallbackQuery, Message, ReplyKeyboardRemove
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.bot.keyboards import BTN_LANG, LangCB, lang_kb, main_menu
+from app.bot.keyboards import BTN_LANG, LangCB, lang_kb, main_menu, phone_kb
 from app.bot.middlewares import RoleFilter
 from app.i18n import LANGS, t, variants
-from app.services.catalog import set_lang
+from app.services.catalog import link_staff_by_phone, set_lang
 
 router = Router(name="common")
 
 
 def no_access_text(user_id: int, lang: str) -> str:
     return t(lang, "no_access", user_id=user_id)
+
+
+async def ask_phone(msg: Message, lang: str) -> None:
+    """Strangers log in by sharing their phone number (matched against staff in the admin panel)."""
+    await msg.answer(t(lang, "auth.ask_phone"), reply_markup=phone_kb(lang))
+
+
+async def _welcome(msg: Message, state: FSMContext, session: AsyncSession, role: str, lang: str, lang_saved: bool):
+    if not lang_saved:
+        # Remember the detected language, so invoices sent to this user later use it too.
+        await set_lang(session, msg.from_user.id, lang)
+    await state.clear()
+    who = t(lang, "role.admin") if role == "admin" else t(lang, "role.courier")
+    await msg.answer(t(lang, "start.hello", name=msg.from_user.full_name, who=who), reply_markup=main_menu(lang))
 
 
 def help_text(role: str, lang: str) -> str:
@@ -28,20 +42,33 @@ async def cmd_start(
     msg: Message, state: FSMContext, session: AsyncSession, role: str | None, lang: str, lang_saved: bool
 ) -> None:
     if role is None:
-        await msg.answer(no_access_text(msg.from_user.id, lang))
+        await ask_phone(msg, lang)
         return
-    if not lang_saved:
-        # Remember the detected language, so invoices sent to this user later use it too.
-        await set_lang(session, msg.from_user.id, lang)
-    await state.clear()
-    who = t(lang, "role.admin") if role == "admin" else t(lang, "role.courier")
-    await msg.answer(t(lang, "start.hello", name=msg.from_user.full_name, who=who), reply_markup=main_menu(lang))
+    await _welcome(msg, state, session, role, lang, lang_saved)
+
+
+@router.message(F.contact)
+async def got_contact(
+    msg: Message, state: FSMContext, session: AsyncSession, role: str | None, lang: str, lang_saved: bool
+) -> None:
+    if role is not None:
+        await _welcome(msg, state, session, role, lang, lang_saved)
+        return
+    # Only the user's own contact counts: a forwarded contact of a colleague must not log anyone in.
+    if msg.contact.user_id != msg.from_user.id:
+        await msg.answer(t(lang, "auth.not_own"), reply_markup=phone_kb(lang))
+        return
+    staff = await link_staff_by_phone(session, msg.from_user.id, msg.contact.phone_number)
+    if staff is None:
+        await msg.answer(t(lang, "auth.not_found", user_id=msg.from_user.id), reply_markup=ReplyKeyboardRemove())
+        return
+    await _welcome(msg, state, session, staff.role, lang, lang_saved)
 
 
 @router.message(Command("help"))
 async def cmd_help(msg: Message, role: str | None, lang: str) -> None:
     if role is None:
-        await msg.answer(no_access_text(msg.from_user.id, lang))
+        await ask_phone(msg, lang)
     else:
         await msg.answer(help_text(role, lang), reply_markup=main_menu(lang))
 

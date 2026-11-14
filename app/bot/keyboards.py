@@ -11,6 +11,7 @@ PAGE_SIZE = 8
 BTN_NEW_SALE = "btn.new_sale"
 BTN_REPORT = "btn.report"
 BTN_LANG = "btn.lang"
+BTN_SHARE_PHONE = "btn.share_phone"
 
 
 class PickCB(CallbackData, prefix="pick"):
@@ -43,6 +44,15 @@ def main_menu(lang: str) -> ReplyKeyboardMarkup:
             [KeyboardButton(text=t(lang, BTN_LANG))],
         ],
         resize_keyboard=True,
+    )
+
+
+def phone_kb(lang: str) -> ReplyKeyboardMarkup:
+    """Single button that sends the user's own contact (Telegram asks for confirmation)."""
+    return ReplyKeyboardMarkup(
+        keyboard=[[KeyboardButton(text=t(lang, BTN_SHARE_PHONE), request_contact=True)]],
+        resize_keyboard=True,
+        one_time_keyboard=True,
     )
 
 

@@ -30,7 +30,7 @@ from app.bot.states import SaleFlow
 from app.config import Settings
 from app.db.models import Client, Product
 from app.i18n import t, variants
-from app.services.catalog import ensure_courier, get_langs, list_page
+from app.services.catalog import admin_recipient_ids, ensure_courier, get_langs, list_page
 from app.services.clock import today_local
 from app.services.formatting import fmt_money, fmt_price, fmt_qty
 from app.services.reports import daily_report, render_courier_report, render_report, vat_label
@@ -306,7 +306,7 @@ async def draft_finish(
     await _drop_kb(cb)
     await cb.answer(t(lang, "sale.saved_toast", id=sale.id))
     await cb.message.answer(t(lang, "sale.saved", id=sale.id), reply_markup=main_menu(lang))
-    recipients = [user.id, *settings.ADMIN_IDS]
+    recipients = list(dict.fromkeys([user.id, *await admin_recipient_ids(session, settings.ADMIN_IDS)]))
     langs = {**await get_langs(session, recipients), user.id: lang}
     await send_invoice(bot, sale, settings, recipients, langs)
 

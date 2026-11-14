@@ -301,4 +301,15 @@ MESSAGES: dict[str, str] = {
     "p.d.all": "Hammasi",
     "p.d.empty": "Hozircha yuk xatlari yoʻq",
     "p.d.invoices_n": "yuk xatlari: {n}",
+    # ---------- login by phone ----------
+    "btn.share_phone": "📱 Telefon raqamni yuborish",
+    "auth.ask_phone": "Kirish uchun pastdagi tugma orqali telefon raqamingizni yuboring.",
+    "auth.not_own": "Iltimos, oʻzingizning raqamingizni tugma orqali yuboring.",
+    "auth.not_found": "⛔ Bu raqam xodimlar roʻyxatida yoʻq.\nAdministrator sizni admin panelda «Xodimlar» boʻlimiga qoʻshsin, soʻng /start bosing.\nSizning ID: {user_id}",
+    "p.staff": "Xodim",
+    "p.staff_plural": "Xodimlar",
+    "p.f.phone": "Telefon",
+    "p.role.courier": "Kuryer",
+    "p.err.bad_phone": "Telefon raqam notoʻgʻri. Masalan: +998 90 123 45 67",
+    "p.err.phone_taken": "Bu raqam boshqa xodimga biriktirilgan.",
 }

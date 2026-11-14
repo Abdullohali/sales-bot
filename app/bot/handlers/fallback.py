@@ -3,7 +3,7 @@
 from aiogram import Router
 from aiogram.types import CallbackQuery, Message
 
-from app.bot.handlers.common import no_access_text
+from app.bot.handlers.common import ask_phone
 from app.bot.keyboards import main_menu
 from app.i18n import t
 
@@ -13,7 +13,7 @@ router = Router(name="fallback")
 @router.message()
 async def any_message(msg: Message, role: str | None, lang: str) -> None:
     if role is None:
-        await msg.answer(no_access_text(msg.from_user.id, lang))
+        await ask_phone(msg, lang)
     elif role == "courier" and msg.text and msg.text.startswith("/"):
         await msg.answer(t(lang, "only_admin"), reply_markup=main_menu(lang))
     else:

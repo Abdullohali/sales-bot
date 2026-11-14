@@ -122,7 +122,7 @@ async def h(session_maker, session):
 
 async def test_stranger_has_no_access(h, session):
     out = await h.text(STRANGER, BTN_NEW_SALE)
-    assert "Нет доступа" in texts(out) and str(STRANGER) in texts(out)
+    assert t("ru", "auth.ask_phone") in texts(out)
     out = await h.click(STRANGER, PickCB(kind="c", id=1).pack())
     assert "Нет доступа" in texts(out)
     assert (await session.scalars(select(Sale))).all() == []

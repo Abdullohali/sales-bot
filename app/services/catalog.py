@@ -6,7 +6,7 @@ from dataclasses import dataclass, field
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.db.models import BotUser, Client, Courier, Product
+from app.db.models import BotUser, Client, Courier, Product, Staff
 from app.i18n import t
 
 IKPU_RE = re.compile(r"^\d{17}$")
@@ -257,13 +257,66 @@ async def ensure_courier(session: AsyncSession, tg_id: int, name: str) -> Courie
 
 
 async def get_role(session: AsyncSession, tg_id: int, admin_ids: list[int]) -> str | None:
-    """'admin' | 'courier' | None (stranger)."""
+    """'admin' | 'courier' | None (stranger).
+    Order: ADMIN_IDS from .env -> staff linked by phone (authoritative once linked) -> couriers by Telegram ID."""
     if tg_id in admin_ids:
         return "admin"
+    staff = await session.scalar(select(Staff).where(Staff.tg_id == tg_id))
+    if staff is not None:
+        return staff.role if staff.active and staff.role in STAFF_ROLES else None
     courier = await session.get(Courier, tg_id)
     if courier and courier.active:
         return "courier"
     return None
+
+
+# ---------- staff (login by phone number) ----------
+
+STAFF_ROLES = ("admin", "courier")
+
+
+def normalize_phone(raw: str | None) -> str | None:
+    """'+998 (90) 123-45-67' / '90 123 45 67' -> '998901234567'; None if it does not look like a phone."""
+    digits = re.sub(r"\D", "", raw or "")
+    if len(digits) == 9:  # local Uzbek number without the country code
+        digits = "998" + digits
+    return digits if 10 <= len(digits) <= 15 else None
+
+
+async def link_staff_by_phone(session: AsyncSession, tg_id: int, phone: str | None) -> Staff | None:
+    """Attach the Telegram account to the active staff row with this phone.
+    Couriers also get a `couriers` row (FK of sales) under the staff name."""
+    norm = normalize_phone(phone)
+    if norm is None:
+        return None
+    staff = await session.scalar(select(Staff).where(Staff.phone == norm, Staff.active.is_(True)))
+    if staff is None or staff.role not in STAFF_ROLES:
+        return None
+    if staff.tg_id is not None and staff.tg_id != tg_id:
+        return None  # the number is already bound to another Telegram account
+    # Another staff row may hold this Telegram ID (e.g. phone changed): release it.
+    other = await session.scalar(select(Staff).where(Staff.tg_id == tg_id, Staff.id != staff.id))
+    if other is not None:
+        other.tg_id = None
+        await session.flush()
+    staff.tg_id = tg_id
+    courier = await session.get(Courier, tg_id)
+    if courier is None:
+        courier = Courier(tg_id=tg_id, name=staff.name, active=staff.role == "courier")
+        session.add(courier)
+    else:
+        courier.name = staff.name
+        courier.active = staff.role == "courier"
+    await session.commit()
+    return staff
+
+
+async def admin_recipient_ids(session: AsyncSession, admin_ids: list[int]) -> list[int]:
+    """Telegram IDs that receive copies of invoices: ADMIN_IDS + linked active staff admins."""
+    rows = await session.scalars(
+        select(Staff.tg_id).where(Staff.role == "admin", Staff.active.is_(True), Staff.tg_id.is_not(None))
+    )
+    return list(dict.fromkeys([*admin_ids, *rows]))
 
 
 # ---------- bot user language ----------

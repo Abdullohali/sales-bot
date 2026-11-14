@@ -10,7 +10,8 @@ from wtforms.validators import Optional
 
 from app.admin.auth import ROLES, current_user, hash_password, is_admin
 from app.admin.i18n import lazy, pt
-from app.db.models import AdminUser, Client, Courier, Product, Sale, SaleItem
+from app.db.models import AdminUser, Client, Courier, Product, Sale, SaleItem, Staff
+from app.services.catalog import STAFF_ROLES, normalize_phone
 
 
 class ActiveFilter(BooleanFilter):
@@ -110,6 +111,57 @@ class CourierAdmin(FileImport, LocalizedView, WriteGuard, ModelView, model=Couri
     }
     form_columns = [Courier.tg_id, Courier.name, Courier.active]
     form_include_pk = True
+
+
+class StaffAdmin(LocalizedView, WriteGuard, ModelView, model=Staff):
+    """People who may use the bot. They sign in by sharing their phone number in the bot;
+    the Telegram ID is filled automatically on the first login."""
+
+    name = lazy("p.staff")
+    name_plural = lazy("p.staff_plural")
+    icon = "fa-solid fa-users"
+    column_list = [Staff.id, Staff.name, Staff.phone, Staff.role, Staff.tg_id, Staff.active]
+    column_searchable_list = [Staff.name, Staff.phone]
+    column_sortable_list = [Staff.name, Staff.role, Staff.active]
+    column_filters = [ActiveFilter(Staff.active, title=lazy("p.f.active"))]
+    column_default_sort = [(Staff.name, False)]
+    column_labels = {
+        Staff.name: lazy("p.f.person_name"),
+        Staff.phone: lazy("p.f.phone"),
+        Staff.role: lazy("p.f.role"),
+        Staff.tg_id: lazy("p.f.tg_id"),
+        Staff.active: lazy("p.f.active"),
+    }
+    column_formatters = {Staff.role: lambda m, a: pt(f"p.role.{m.role}")}
+    column_formatters_detail = column_formatters
+    form_columns = [Staff.name, Staff.phone, Staff.role, Staff.active]
+    form_overrides = {"role": SelectField}
+    form_args = {"role": {"choices": [("courier", lazy("p.role.courier")), ("admin", lazy("p.role.admin"))]}}
+
+    async def on_model_change(self, data: dict, model: Staff, is_created: bool, request: Request) -> None:
+        if data.get("role") not in STAFF_ROLES:
+            raise ValueError(pt("p.err.unknown_role"))
+        phone = normalize_phone(data.get("phone"))
+        if phone is None:
+            raise ValueError(pt("p.err.bad_phone"))
+        data["phone"] = phone
+        async with self.session_maker() as session:
+            taken = await session.scalar(select(Staff.id).where(Staff.phone == phone, Staff.id != model.id))
+        if taken is not None:
+            raise ValueError(pt("p.err.phone_taken"))
+        if not is_created and model.phone != phone:
+            model.tg_id = None  # new number = possibly a new person: they must log in again
+
+    async def after_model_change(self, data: dict, model: Staff, is_created: bool, request: Request) -> None:
+        """Keep the linked `couriers` row (used by sales and reports) in sync with the staff record."""
+        if model.tg_id is None:
+            return
+        async with self.session_maker() as session:
+            courier = await session.get(Courier, model.tg_id)
+            if courier is not None:
+                courier.name = model.name
+                courier.active = model.active and model.role == "courier"
+                await session.commit()
 
 
 class SaleAdmin(LocalizedView, ModelView, model=Sale):
@@ -215,4 +267,4 @@ class AdminUserAdmin(LocalizedView, ModelView, model=AdminUser):
             raise ValueError(pt("p.err.pw_required"))
 
 
-ALL_VIEWS = [SaleAdmin, ClientAdmin, ProductAdmin, CourierAdmin, AdminUserAdmin]
+ALL_VIEWS = [SaleAdmin, ClientAdmin, ProductAdmin, StaffAdmin, CourierAdmin, AdminUserAdmin]

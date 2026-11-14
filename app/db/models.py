@@ -138,6 +138,24 @@ class BotUser(Base):
     lang: Mapped[str] = mapped_column(String(5))  # uz | ru | en
 
 
+class Staff(Base):
+    """Bot users added by phone in the admin panel. On the first /start the person shares
+    their contact; a matching active row gets linked to their Telegram ID and grants the role.
+    role: "admin" | "courier"."""
+
+    __tablename__ = "staff"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    name: Mapped[str] = mapped_column(String(100))
+    phone: Mapped[str] = mapped_column(String(20), unique=True)  # digits only, e.g. 998901234567
+    role: Mapped[str] = mapped_column(String(20), default="courier", server_default="courier")
+    tg_id: Mapped[int | None] = mapped_column(BigInteger, unique=True)  # filled on first login
+    active: Mapped[bool] = mapped_column(default=True, server_default=true())
+
+    def __str__(self) -> str:
+        return self.name
+
+
 class AdminUser(Base):
     """Admin panel login. role: "admin" (full access) | "accountant" (read + reports)."""
 
