@@ -3,6 +3,18 @@
 {% extends "sqladmin/base.html" %}
 {% from 'sqladmin/_macros.html' import display_menu %}
 
+{% block tail_js %}
+{{ super() }}
+<script>
+  // sqladmin's main.js writes an English confirmation into the delete modal; this handler runs after it.
+  $(document).on("shown.bs.modal", "#modal-delete", function (event) {
+    var el = $(event.relatedTarget);
+    var text = {{ t("p.del.confirm") | tojson }};
+    $("#modal-delete-text").text(text.replace("{name}", el.data("name")).replace("{pk}", el.data("pk") || ""));
+  });
+</script>
+{% endblock %}
+
 {% block head %}
 {% include "_theme_head.html" %}
 {% endblock %}

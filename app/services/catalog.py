@@ -1,4 +1,6 @@
-"""Directory CRUD: clients, products, couriers. Deletion is always soft (active=False)."""
+"""Directory CRUD: clients, products, couriers.
+The bot only deactivates (active=False); the admin panel may also hard-delete a row,
+but only when nothing references it (see `delete_blocker`)."""
 
 import re
 from dataclasses import dataclass, field
@@ -6,7 +8,7 @@ from dataclasses import dataclass, field
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.db.models import BotUser, Client, Courier, Product, Staff
+from app.db.models import AdminUser, BotUser, Client, Courier, Product, Sale, SaleItem, Staff
 from app.i18n import t
 
 IKPU_RE = re.compile(r"^\d{17}$")
@@ -342,3 +344,46 @@ async def set_lang(session: AsyncSession, tg_id: int, lang: str) -> None:
     else:
         user.lang = lang
     await session.commit()
+
+
+# ---------- safe hard delete (admin panel) ----------
+
+
+async def delete_blocker(session: AsyncSession, obj, *, by_username: str | None = None) -> tuple[str, dict] | None:
+    """Why `obj` must not be hard-deleted, as (i18n key, params), or None if it is safe.
+    Anything used in an invoice (including soft-deleted ones) stays: invoices and reports must never lose data.
+    Such rows can only be deactivated (active=False)."""
+    if isinstance(obj, Product):
+        n = await session.scalar(
+            select(func.count(func.distinct(SaleItem.sale_id))).where(SaleItem.product_id == obj.id)
+        )
+        return ("p.del.in_use", {"name": obj.name, "n": n}) if n else None
+    if isinstance(obj, Client):
+        n = await session.scalar(select(func.count(Sale.id)).where(Sale.client_id == obj.id))
+        return ("p.del.in_use", {"name": obj.name, "n": n}) if n else None
+    if isinstance(obj, Courier):
+        n = await session.scalar(select(func.count(Sale.id)).where(Sale.courier_id == obj.tg_id))
+        return ("p.del.in_use", {"name": obj.name, "n": n}) if n else None
+    if isinstance(obj, AdminUser):
+        if by_username is not None and obj.username == by_username:
+            return ("p.del.self", {})
+        if obj.role == "admin" and obj.active:
+            others = await session.scalar(
+                select(func.count(AdminUser.id)).where(
+                    AdminUser.role == "admin", AdminUser.active.is_(True), AdminUser.id != obj.id
+                )
+            )
+            if not others:
+                return ("p.del.last_admin", {})
+    return None
+
+
+async def revoke_staff_access(session: AsyncSession, staff: Staff) -> None:
+    """Before a staff row is deleted: their linked `couriers` row must stop granting the courier role
+    (get_role falls back to `couriers` when there is no staff row). The row itself stays for old invoices."""
+    if staff.tg_id is None:
+        return
+    courier = await session.get(Courier, staff.tg_id)
+    if courier is not None and courier.active:
+        courier.active = False
+        await session.commit()

@@ -11,7 +11,7 @@ from wtforms.validators import Optional
 from app.admin.auth import ROLES, current_user, hash_password, is_admin
 from app.admin.i18n import lazy, pt
 from app.db.models import AdminUser, Client, Courier, Product, Sale, SaleItem, Staff
-from app.services.catalog import STAFF_ROLES, normalize_phone
+from app.services.catalog import STAFF_ROLES, delete_blocker, normalize_phone, revoke_staff_access
 
 
 class ActiveFilter(BooleanFilter):
@@ -42,11 +42,33 @@ class FileImport:
     import_kind: str = ""
 
 
-class WriteGuard:
-    """Accountants can browse everything, only admins can change data.
-    Hard deletes are disabled everywhere: directories use active=False (soft delete)."""
+class SafeDelete:
+    """Hard delete for admins only, and only when nothing references the row
+    (`catalog.delete_blocker`). Rows used in invoices must be deactivated instead;
+    the reason is shown on the list page. The database foreign keys are the last line of defence."""
 
-    can_delete = False
+    can_delete = True
+
+    def _can_delete_any(self, request: Request) -> bool:
+        return is_admin(request) and super()._can_delete_any(request)
+
+    async def check_can_delete(self, request: Request, model) -> bool:
+        return is_admin(request) and await super().check_can_delete(request, model)
+
+    async def on_model_delete(self, model, request: Request) -> None:
+        if not is_admin(request):
+            raise HTTPException(status_code=403, detail=pt("p.err.admin_only"))
+        async with self.session_maker() as session:
+            blocker = await delete_blocker(session, model, by_username=current_user(request))
+        if blocker is not None:
+            key, params = blocker
+            raise ValueError(pt(key, **params))
+        await super().on_model_delete(model, request)
+
+
+class WriteGuard(SafeDelete):
+    """Accountants can browse everything, only admins can change data."""
+
     can_import = False
 
     def _guard(self, request: Request) -> None:
@@ -152,6 +174,11 @@ class StaffAdmin(LocalizedView, WriteGuard, ModelView, model=Staff):
         if not is_created and model.phone != phone:
             model.tg_id = None  # new number = possibly a new person: they must log in again
 
+    async def on_model_delete(self, model: Staff, request: Request) -> None:
+        await super().on_model_delete(model, request)
+        async with self.session_maker() as session:
+            await revoke_staff_access(session, model)
+
     async def after_model_change(self, data: dict, model: Staff, is_created: bool, request: Request) -> None:
         """Keep the linked `couriers` row (used by sales and reports) in sync with the staff record."""
         if model.tg_id is None:
@@ -165,7 +192,8 @@ class StaffAdmin(LocalizedView, WriteGuard, ModelView, model=Staff):
 
 
 class SaleAdmin(LocalizedView, ModelView, model=Sale):
-    """Invoices are read-only in the panel; the only change allowed is a soft delete (with audit)."""
+    """Invoices are read-only in the panel; the only change allowed is a soft delete (with audit).
+    Never hard-deleted: invoice numbers are a continuous sequence the accountants rely on."""
 
     name = lazy("p.invoice")
     name_plural = lazy("p.invoices")
@@ -227,11 +255,12 @@ class SaleAdmin(LocalizedView, ModelView, model=Sale):
         return RedirectResponse(request.url_for("admin:list", identity=self.identity), status_code=302)
 
 
-class AdminUserAdmin(LocalizedView, ModelView, model=AdminUser):
+class AdminUserAdmin(SafeDelete, LocalizedView, ModelView, model=AdminUser):
+    """You cannot delete yourself or the last active administrator."""
+
     name = lazy("p.panel_user")
     name_plural = lazy("p.panel_users")
     icon = "fa-solid fa-user-shield"
-    can_delete = False
     can_import = False
     column_list = [AdminUser.id, AdminUser.username, AdminUser.role, AdminUser.active]
     column_details_exclude_list = [AdminUser.password_hash]

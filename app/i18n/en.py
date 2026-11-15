@@ -309,4 +309,8 @@ MESSAGES: dict[str, str] = {
     "p.role.courier": "Courier",
     "p.err.bad_phone": "Invalid phone number. Example: +998 90 123 45 67",
     "p.err.phone_taken": "This number already belongs to another staff member.",
+    "p.del.confirm": "«{name}» #{pk} will be deleted permanently. Records used in invoices will not be deleted.",
+    "p.del.in_use": "«{name}» is used in {n} invoice(s) and cannot be deleted. Edit it and clear «Active» instead.",
+    "p.del.self": "You cannot delete yourself.",
+    "p.del.last_admin": "This is the last active administrator and cannot be deleted.",
 }

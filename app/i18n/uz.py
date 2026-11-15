@@ -312,4 +312,8 @@ MESSAGES: dict[str, str] = {
     "p.role.courier": "Kuryer",
     "p.err.bad_phone": "Telefon raqam notoʻgʻri. Masalan: +998 90 123 45 67",
     "p.err.phone_taken": "Bu raqam boshqa xodimga biriktirilgan.",
+    "p.del.confirm": "«{name}» #{pk} butunlay oʻchiriladi, buni qaytarib boʻlmaydi. Yuk xatlarida ishlatilgan yozuvni tizim oʻchirmaydi.",
+    "p.del.in_use": "«{name}» {n} ta yuk xatida ishlatilgan, uni oʻchirib boʻlmaydi. Oʻrniga tahrirlab «Faol» belgisini olib tashlang.",
+    "p.del.self": "Oʻzingizni oʻchira olmaysiz.",
+    "p.del.last_admin": "Bu oxirgi faol administrator, uni oʻchirib boʻlmaydi.",
 }
