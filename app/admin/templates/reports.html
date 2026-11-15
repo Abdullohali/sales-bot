@@ -1,17 +1,18 @@
 {% extends "sqladmin/layout.html" %}
 {% block content %}
 <div class="row row-cards">
-  <div class="col-md-6">
+  <div class="col-lg-7">
     <div class="card">
       <div class="card-header"><h3 class="card-title"><i class="fa-solid fa-calendar-day text-primary me-2"></i>{{ t("p.r.daily") }}</h3></div>
       <div class="card-body">
-        <form method="get" class="d-flex gap-2 mb-3">
-          <input type="date" name="day" value="{{ day }}" class="form-control" style="max-width:200px">
-          <button class="btn btn-primary" type="submit"><i class="fa-solid fa-magnifying-glass me-2"></i>{{ t("p.r.show") }}</button>
+        <form method="get" class="app-inline-form mb-3">
+          <input type="date" name="day" value="{{ day }}" class="form-control" aria-label="{{ t('p.f.date') }}">
+          <button class="btn btn-primary text-nowrap" type="submit"><i class="fa-solid fa-magnifying-glass me-2"></i>{{ t("p.r.show") }}</button>
         </form>
         <p class="text-secondary">{{ t("report.title", date=day, n=rep.sale_count) }}</p>
         {% if rep.sale_count %}
-        <table class="table table-sm">
+        <div class="table-responsive app-table-scroll">
+        <table class="table table-sm table-vcenter mb-2 app-num-table">
           <thead><tr><th>{{ t("p.r.client") }}</th><th class="text-end">{{ t("p.r.ex") }}</th><th class="text-end">{{ t("p.r.vat") }}</th><th class="text-end">{{ t("p.r.total") }}</th></tr></thead>
           <tbody>
           {% for name, a in rep.by_client %}
@@ -22,21 +23,24 @@
             <tr class="fw-bold"><td>{{ t("p.r.sum") }}</td><td class="text-end">{{ fmt(rep.totals.ex) }}</td><td class="text-end">{{ fmt(rep.totals.vat) }}</td><td class="text-end">{{ fmt(rep.totals.total) }}</td></tr>
           </tfoot>
         </table>
-        <p class="text-secondary small">{{ vat_title }}</p>
+        </div>
+        <p class="text-secondary small mb-0">{{ vat_title }}</p>
         {% else %}
         <div class="app-empty"><i class="fa-solid fa-box-open"></i>{{ t("report.none") }}</div>
         {% endif %}
       </div>
     </div>
   </div>
-  <div class="col-md-6">
+  <div class="col-lg-5">
     <div class="card">
       <div class="card-header"><h3 class="card-title"><i class="fa-solid fa-file-excel text-success me-2"></i>{{ t("p.r.export") }}</h3></div>
       <div class="card-body">
         <form method="get" action="{{ url_for('admin:view-export') }}">
-          <div class="mb-2"><label class="form-label">{{ t("p.r.from") }}</label><input type="date" name="from" value="{{ day }}" class="form-control"></div>
-          <div class="mb-3"><label class="form-label">{{ t("p.r.to") }}</label><input type="date" name="to" value="{{ day }}" class="form-control"></div>
-          <button class="btn btn-success" type="submit"><i class="fa-solid fa-download me-2"></i>{{ t("p.r.download") }}</button>
+          <div class="row g-2 mb-3">
+            <div class="col-6 col-lg-12 col-xl-6"><label class="form-label">{{ t("p.r.from") }}</label><input type="date" name="from" value="{{ day }}" class="form-control"></div>
+            <div class="col-6 col-lg-12 col-xl-6"><label class="form-label">{{ t("p.r.to") }}</label><input type="date" name="to" value="{{ day }}" class="form-control"></div>
+          </div>
+          <button class="btn btn-success app-btn-block-sm" type="submit"><i class="fa-solid fa-download me-2"></i>{{ t("p.r.download") }}</button>
         </form>
         <p class="text-secondary small mt-2">{{ t("p.r.export_note") }}</p>
       </div>

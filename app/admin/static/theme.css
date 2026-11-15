@@ -543,3 +543,272 @@ aside.navbar-vertical .navbar-toggler {
 .app-lang a { color: var(--app-muted); }
 .app-lang a:hover { background: #fff; color: var(--app-text); }
 .app-lang span { background: #fff; color: var(--app-primary); font-weight: 600; box-shadow: var(--app-shadow); }
+
+/* =====================================================================
+ * Responsive layer
+ * Breakpoints follow Bootstrap: sidebar becomes a one-row sticky header
+ * below lg (992px); list/form/detail pages reflow below md (768px).
+ * The page itself never scrolls sideways: only wide tables scroll inside
+ * their own card.
+ * ===================================================================== */
+
+.page-wrapper { min-width: 0; }
+.app-cell-wrap { white-space: normal; min-width: 8rem; }
+
+/* compact top-bar buttons (mobile header) */
+.app-btn-compact {
+  height: 38px;
+  min-width: 38px;
+  padding: 0 .65rem;
+  font-size: .85rem;
+  justify-content: center;
+}
+
+/* user card at the top of the mobile menu */
+.app-menu-user {
+  display: flex;
+  align-items: center;
+  gap: .6rem;
+  margin: .25rem 0 .5rem;
+  padding: .6rem .75rem;
+  border-radius: 10px;
+  background: var(--app-bg);
+  font-size: .9rem;
+  line-height: 1.15;
+}
+
+.app-menu-user small {
+  display: block;
+  color: var(--app-muted);
+  font-size: .75rem;
+}
+
+/* sidebar menu: two stacked .navbar-nav blocks (home + sqladmin menu) must not stretch apart */
+.app-sidebar .navbar-collapse > .navbar-nav { flex: 0 0 auto; min-height: 0; }
+
+@media (min-width: 992px) {
+  .app-sidebar .navbar-brand { justify-content: flex-start; width: 100%; }
+  .app-sidebar .navbar-collapse { align-items: stretch; }
+}
+
+/* list pages: title on the left, action buttons wrap as a group on the right */
+.card:has(#dropdownMenuButton) > .card-header { flex-wrap: wrap; gap: .75rem; }
+.card:has(#dropdownMenuButton) > .card-header > .ms-auto {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: .5rem;
+}
+
+.card:has(#dropdownMenuButton) > .card-header > .ms-auto > div { margin: 0 !important; }
+.card-body > .d-flex.justify-content-between > .col-md-4 { flex: 0 1 22rem; width: auto; min-width: 0; }
+
+/* dashboard counters: icon above the number, so labels never break mid-word in narrow cards */
+.app-stat-small .app-stat { flex-direction: column; align-items: flex-start; gap: .6rem; }
+.app-stat-small .app-stat-icon { width: 38px; height: 38px; border-radius: 11px; font-size: 1rem; }
+.app-stat-label { overflow-wrap: normal; }
+
+/* wrapping card headers (title + actions) */
+.app-card-header-wrap { flex-wrap: wrap; row-gap: .35rem; }
+
+/* reports: date + button in one row, wrapping on narrow screens */
+.app-inline-form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .5rem;
+}
+
+.app-inline-form .form-control { flex: 1 1 10rem; max-width: 15rem; }
+
+/* money tables: numbers never break inside a cell */
+.app-num-table th.text-end,
+.app-num-table td.text-end {
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.app-num-table td:first-child { min-width: 9rem; }
+
+/* forms: the main "Save" button stands out */
+.card-body form .btn-group > input[name="save"]:first-child {
+  background: var(--app-primary);
+  border-color: var(--app-primary);
+  color: #fff;
+}
+
+/* invoice details: long values wrap instead of being cut off */
+.table-bordered.text-nowrap td { white-space: normal; overflow-wrap: anywhere; }
+.table-bordered.text-nowrap td:first-child { width: 38%; color: var(--app-muted); }
+
+/* filters hidden by default on phones, toggled from their header (see layout.html) */
+.app-filter-toggle { display: none; }
+
+/* Wide tables scroll inside their card; a soft fade on the edge shows there is more
+   (classes set by layout.html on scroll/resize). mask-image fades content whatever its background. */
+.table-responsive.app-more-right { -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 36px), transparent); mask-image: linear-gradient(to right, #000 calc(100% - 36px), transparent); }
+.table-responsive.app-more-left { -webkit-mask-image: linear-gradient(to left, #000 calc(100% - 36px), transparent); mask-image: linear-gradient(to left, #000 calc(100% - 36px), transparent); }
+.table-responsive.app-more-left.app-more-right { -webkit-mask-image: linear-gradient(to right, transparent, #000 36px, #000 calc(100% - 36px), transparent); mask-image: linear-gradient(to right, transparent, #000 36px, #000 calc(100% - 36px), transparent); }
+
+/* "Actions" dropdown left without items (delete moved to the header button) */
+.app-hidden-actions { visibility: hidden; }
+
+/* ---------- below lg: sidebar -> sticky one-row header ---------- */
+
+@media (max-width: 991.98px) {
+  /* pagination footer: counter on its own line, controls centered (cards are narrow here) */
+  .card-footer.d-flex { flex-wrap: wrap; justify-content: center !important; row-gap: .6rem; }
+  .card-footer.d-flex > p { width: 100%; text-align: center; font-size: .85rem; }
+  .card-footer.d-flex > .pagination { margin: 0 !important; }
+
+  .app-sidebar {
+    position: sticky;
+    top: 0;
+    z-index: 1030;
+    border-right: 0;
+    border-bottom: 1px solid var(--app-border);
+    box-shadow: 0 1px 8px rgba(30, 42, 70, .04);
+  }
+
+  .app-sidebar > .container-fluid {
+    flex-wrap: wrap;
+    align-items: center;
+    gap: .5rem;
+    min-height: 58px;
+    padding: .5rem .75rem;
+  }
+
+  aside.app-sidebar { padding: 0; }
+  aside.app-sidebar .navbar-brand { order: 1; margin: 0 auto 0 0; padding: 0; min-width: 0; }
+  .app-mobile-actions { order: 2; }
+  .app-sidebar .navbar-toggler { order: 3; }
+  .app-sidebar .navbar-collapse { order: 4; flex-basis: 100%; }
+
+  .app-brand { font-size: 1rem; gap: .55rem; min-width: 0; }
+  .app-brand-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .app-brand-icon { width: 34px; height: 34px; border-radius: 10px; font-size: .9rem; box-shadow: 0 4px 10px rgba(var(--app-primary-rgb), .25); }
+
+  .app-sidebar .navbar-toggler {
+    display: grid;
+    place-items: center;
+    width: 38px;
+    height: 38px;
+    padding: 0;
+    border: 1px solid var(--app-border);
+    border-radius: 10px;
+  }
+
+  .app-sidebar .navbar-toggler:focus { box-shadow: 0 0 0 4px rgba(var(--app-primary-rgb), .12); }
+
+  /* the open menu scrolls by itself if it is taller than the screen */
+  .app-sidebar .navbar-collapse { max-height: calc(100dvh - 58px); overflow-y: auto; }
+  .app-sidebar .navbar-collapse .navbar-nav { padding: 0; }
+  .app-sidebar .navbar-collapse > .navbar-nav:last-child { padding-bottom: .5rem; }
+  .app-sidebar .nav-link { padding: .65rem .75rem !important; }
+  .app-sidebar .nav-link::before { display: none; }
+  .app-sidebar .navbar-nav .dropdown-menu { animation: none; }
+}
+
+/* ---------- below md: phones and small tablets ---------- */
+
+@media (max-width: 767.98px) {
+  .page-wrapper .container-fluid { padding-left: .75rem; padding-right: .75rem; }
+  .page-header { margin-top: 1rem; }
+  .page-header + .page-body,
+  .page-wrapper > .page-body:first-of-type { margin-top: .75rem; }
+  .page-title { font-size: 1.25rem; }
+  .row-cards { --tblr-gutter-y: .75rem; --tblr-gutter-x: .75rem; }
+
+  .card-header { padding: .85rem 1rem; }
+  .card-body { padding: 1rem; }
+  .card-title { font-size: 1rem; }
+
+  /* iOS zooms into inputs with text smaller than 16px */
+  .form-control, .form-select, .select2-container .select2-selection { font-size: 16px; }
+
+  /* bigger touch targets */
+  .table .form-check-input { width: 1.2rem; height: 1.2rem; }
+
+  /* -- dashboard -- */
+  .app-stat { gap: .75rem; padding: .9rem 1rem; }
+  .app-stat-icon { width: 42px; height: 42px; border-radius: 12px; font-size: 1.05rem; }
+  .app-stat-value { font-size: 1.25rem; }
+  .app-stat-small .app-stat-icon { width: 34px; height: 34px; border-radius: 10px; font-size: .9rem; }
+  .app-stat-small .app-stat-value { font-size: 1.15rem; }
+  .app-stat-label { font-size: .78rem; }
+  .app-bars { min-height: 140px; gap: .35rem; }
+  .app-bar-label { font-size: .65rem; }
+
+  /* -- list pages: header actions wrap under the title -- */
+  .card:has(#dropdownMenuButton) > .card-header { flex-wrap: wrap; gap: .6rem; }
+  .card:has(#dropdownMenuButton) > .card-header > .ms-auto {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .5rem;
+    width: 100%;
+    margin-left: 0 !important;
+  }
+
+  .card:has(#dropdownMenuButton) > .card-header > .ms-auto > div { margin: 0 !important; flex: 1 1 auto; }
+  .card:has(#dropdownMenuButton) > .card-header > .ms-auto .btn { width: 100%; white-space: nowrap; }
+
+  /* actions + search row */
+  .card-body > .d-flex.justify-content-between { flex-wrap: wrap; gap: .5rem; }
+  .card-body > .d-flex.justify-content-between > .dropdown { flex: 0 0 auto; width: auto; }
+  .card-body > .d-flex.justify-content-between > .dropdown.app-hidden-actions { display: none; }
+  .card-body > .d-flex.justify-content-between > .col-md-4 { flex: 1 1 14rem; width: auto; }
+
+  /* list + filters: stacked, filters first and collapsed */
+  .d-flex:has(> .filter-sidebar-col) { flex-direction: column; }
+  .d-flex:has(> .filter-sidebar-col) > .flex-grow-1 { margin-right: 0 !important; }
+  .filter-sidebar-col { order: -1; width: 100%; margin-bottom: .75rem; }
+  #filter-sidebar > .card-header { cursor: pointer; user-select: none; }
+  #filter-sidebar .app-filter-toggle { display: inline-block; margin-left: auto; color: var(--app-muted); transition: transform .2s var(--app-ease); }
+  #filter-sidebar:not(.is-open) > .card-body { display: none; }
+  #filter-sidebar.is-open .app-filter-toggle { transform: rotate(180deg); }
+  #filter-sidebar .card-body > .mb-3:last-child { margin-bottom: 0 !important; }
+
+  /* lookup filters as chips in one row */
+  #filter-sidebar .card-body .mb-3 > div:last-child { display: flex; flex-wrap: wrap; gap: .4rem; }
+  #filter-sidebar .card-body a.d-block,
+  #filter-sidebar .card-body .bg-secondary-lt {
+    display: inline-flex !important;
+    align-items: center;
+    padding: .3rem .75rem !important;
+    border: 1px solid var(--app-border);
+    border-radius: 999px !important;
+  }
+
+  #filter-sidebar .card-body .bg-secondary-lt { background: var(--app-primary-soft) !important; border-color: transparent; }
+  #filter-sidebar .filter-form { gap: .5rem; width: 100%; }
+
+
+  /* -- create / edit forms: full-width buttons, "Save" first -- */
+  .card-body form > .row:last-child { row-gap: .5rem; }
+  .card-body form > .row:last-child > [class*="col-md-"] { width: 100%; }
+  .card-body form > .row:last-child > .col-md-2 { order: 2; }
+  .card-body form > .row:last-child > .col-md-2 .btn { width: 100%; }
+  .card-body form .btn-group.flex-wrap { display: grid; gap: .5rem; width: 100%; }
+  .card-body form .btn-group.flex-wrap > .btn { width: 100%; margin: 0 !important; border-radius: 9px !important; }
+  .form-fieldset { padding: 1rem; }
+
+  /* -- details page: buttons share the row -- */
+  .card-footer.container { max-width: none; }
+  .card-footer.container .col-auto { flex: 1 1 auto; }
+  .card-footer.container .col-auto .btn { width: 100%; }
+
+  /* -- reports -- */
+  .app-inline-form .form-control { max-width: none; }
+  .app-num-table { font-size: .8rem; }
+  .app-num-table > :not(caption) > * > * { padding-left: .3rem; padding-right: .3rem; }
+  .app-num-table td:first-child { min-width: 6.5rem; }
+  .app-btn-block-sm { width: 100%; }
+
+  /* modals: comfortable side margins */
+  .modal-dialog { margin: .75rem; }
+}
+
+/* very narrow phones (iPhone SE / mini) */
+@media (max-width: 379.98px) {
+  .app-brand-title { max-width: 8.5rem; }
+  .app-mobile-actions .dropdown-toggle span { display: none; }
+}

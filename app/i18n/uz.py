@@ -318,4 +318,6 @@ MESSAGES: dict[str, str] = {
     "p.del.last_admin": "Bu oxirgi faol administrator, uni oʻchirib boʻlmaydi.",
     "p.del.button": "Oʻchirish",
     "p.del.confirm_many": "Tanlangan {n} ta yozuv butunlay oʻchiriladi, buni qaytarib boʻlmaydi. Yuk xatlarida ishlatilganlari oʻchirilmaydi.",
+    "p.flt.operation": "Shartni tanlang…",
+    "p.flt.value": "Qiymat",
 }

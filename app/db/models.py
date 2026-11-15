@@ -81,6 +81,10 @@ class Sale(Base):
 
     @property
     def lines_display(self) -> str:
+        return "; ".join(self.lines_list)
+
+    @property
+    def lines_list(self) -> list[str]:
         from app.admin.i18n import pt
         from app.services.formatting import fmt_money, fmt_price, fmt_qty
         from app.services.sales import item_amounts
@@ -108,7 +112,7 @@ class Sale(Base):
                     total=fmt_money(a.total),
                 )
             )
-        return "; ".join(rows)
+        return rows
 
 
 class SaleItem(Base):

@@ -26,7 +26,7 @@
     $("table tbody a[data-bs-target='#modal-delete']").remove();
     var menu = $(source).closest(".dropdown-menu");
     $(source).remove();
-    if (!menu.children().length) menu.closest(".dropdown").css("visibility", "hidden");
+    if (!menu.children().length) menu.closest(".dropdown").addClass("app-hidden-actions");
 
     var btn = $('<button type="button" id="bulk-delete" class="btn btn-outline-danger" disabled>')
       .append('<i class="fa-solid fa-trash me-2"></i>', $("<span>").text(label), $('<span class="ms-1 bulk-count">'));
@@ -52,6 +52,48 @@
     });
     refresh();
   })();
+
+  // Tables wider than the screen: fade the edge that has more content (see .app-more-* in theme.css).
+  (function () {
+    var boxes = document.querySelectorAll(".table-responsive");
+    if (!boxes.length) return;
+    function update(box) {
+      var max = box.scrollWidth - box.clientWidth;
+      box.classList.toggle("app-more-left", box.scrollLeft > 2);
+      box.classList.toggle("app-more-right", max - box.scrollLeft > 2);
+    }
+    boxes.forEach(function (box) {
+      update(box);
+      box.addEventListener("scroll", function () { update(box); }, { passive: true });
+    });
+    var timer;
+    window.addEventListener("resize", function () {
+      clearTimeout(timer);
+      timer = setTimeout(function () { boxes.forEach(update); }, 100);
+    });
+  })();
+
+  // Phones: the filter card is collapsed to its header; it starts open while a filter is applied.
+  (function () {
+    var card = document.getElementById("filter-sidebar");
+    if (!card) return;
+    var header = card.querySelector(".card-header");
+    var icon = document.createElement("i");
+    icon.className = "fa-solid fa-chevron-down app-filter-toggle";
+    header.appendChild(icon);
+    header.setAttribute("role", "button");
+    header.setAttribute("tabindex", "0");
+    var active = card.querySelector(".bg-secondary-lt, .filter-form input[name]:not([type=hidden])[value]:not([value=''])");
+    function setOpen(open) {
+      card.classList.toggle("is-open", open);
+      header.setAttribute("aria-expanded", open ? "true" : "false");
+    }
+    setOpen(!!active);
+    header.addEventListener("click", function () { setOpen(!card.classList.contains("is-open")); });
+    header.addEventListener("keydown", function (e) {
+      if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setOpen(!card.classList.contains("is-open")); }
+    });
+  })();
 </script>
 {% endblock %}
 
@@ -59,74 +101,92 @@
 {% include "_theme_head.html" %}
 {% endblock %}
 
+{# Language switcher and logout: full size in the desktop top bar, compact in the mobile header. #}
+{% macro lang_menu(compact) %}
+{% if i18n_config.language_switcher and i18n_config.language_switcher | length > 1 %}
+<div class="nav-item dropdown">
+  <a href="#" class="btn btn-light-soft dropdown-toggle d-flex align-items-center {{ 'app-btn-compact' if compact else 'px-3' }}"
+    data-bs-toggle="dropdown" aria-expanded="false" title="{{ _('Language') }}" aria-label="{{ _('Language') }}">
+    <i class="fa-solid fa-language {{ 'me-1' if compact else 'me-2' }}"></i>
+    <span>{{ get_locale() | upper if compact else get_locale_display_name(get_locale()) }}</span>
+  </a>
+  <div class="dropdown-menu dropdown-menu-end">
+    {% for code in i18n_config.language_switcher %}
+    <a class="dropdown-item {% if code == get_locale() %}active{% endif %}"
+      href="{{ request.url.include_query_params(lang=code) }}">{{ lang_names[code] }}</a>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
+{% endmacro %}
+
+{% macro logout_button(compact) %}
+{% if admin.authentication_backend %}
+<a href="{{ request.url_for('admin:logout') }}" class="btn btn-light-soft btn-icon{{ ' app-btn-compact' if compact }}"
+  title="{{ _('Logout') }}" aria-label="{{ _('Logout') }}">
+  <i class="fa-solid fa-right-from-bracket"></i>
+</a>
+{% endif %}
+{% endmacro %}
+
 {% block body %}
+{% set username = request.session.get("username") %}
 <div class="wrapper">
-  <aside class="navbar navbar-expand-lg navbar-vertical navbar-expand-md navbar-light">
+  {# Tabler's vertical navbar: a sidebar on large screens, a sticky one-row header with a collapsible menu below lg. #}
+  <aside class="navbar navbar-vertical navbar-expand-lg navbar-light app-sidebar">
     <div class="container-fluid">
+      <button class="navbar-toggler collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#sidebar-menu"
+        aria-controls="sidebar-menu" aria-expanded="false" aria-label="{{ _('Toggle navigation') }}">
+        <span class="navbar-toggler-icon"></span>
+      </button>
       <h1 class="navbar-brand">
         <a href="{{ url_for('admin:index') }}" class="app-brand">
           <span class="app-brand-icon"><i class="fa-solid fa-basket-shopping"></i></span>
-          <span>{{ admin.title }}</span>
+          <span class="app-brand-title">{{ admin.title }}</span>
         </a>
       </h1>
-      <nav class="navbar navbar-expand-sm shadow-none" id="navbar-menu" data-sqladmin-menu="{{ admin.base_url }}">
-        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarSupportedContent"
-          aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
-          <span class="navbar-toggler-icon"></span>
-        </button>
-        <div class="collapse navbar-collapse" id="navbarSupportedContent">
-          <div class="navbar-nav">
-            <div class="nav-item">
-              <a class="nav-link {% if request.url.path.rstrip('/') == url_for('admin:index').path.rstrip('/') %}active{% endif %}"
-                href="{{ url_for('admin:index') }}">
-                <span class="nav-link-icon d-md-none d-lg-inline-block"><i class="fa-solid fa-house"></i></span>
-                <span class="nav-link-title">{{ t("p.d.title") }}</span>
-              </a>
-            </div>
-          </div>
-          {{ display_menu(admin._menu, request) }}
+      <div class="navbar-nav flex-row align-items-center gap-2 d-lg-none app-mobile-actions">
+        {{ lang_menu(True) }}
+        {{ logout_button(True) }}
+      </div>
+      <div class="collapse navbar-collapse" id="sidebar-menu" data-sqladmin-menu="{{ admin.base_url }}">
+        {% if username %}
+        <div class="app-menu-user d-lg-none">
+          <span class="app-avatar">{{ username[:1] }}</span>
+          <span>{{ username }}<small>{{ t("p.role." ~ request.session.get("role", "admin")) }}</small></span>
         </div>
-      </nav>
+        {% endif %}
+        <div class="navbar-nav">
+          <div class="nav-item">
+            <a class="nav-link {% if request.url.path.rstrip('/') == url_for('admin:index').path.rstrip('/') %}active{% endif %}"
+              href="{{ url_for('admin:index') }}">
+              <span class="nav-link-icon d-inline-block"><i class="fa-solid fa-house"></i></span>
+              <span class="nav-link-title">{{ t("p.d.title") }}</span>
+            </a>
+          </div>
+        </div>
+        {{ display_menu(admin._menu, request) }}
+      </div>
     </div>
   </aside>
 
   <div class="page-wrapper">
     {% block topbar %}
-    <header class="navbar navbar-expand-md d-print-none sticky-top app-topbar">
+    {# blocks do not see variables set outside them: read the user again #}
+    {% set username = request.session.get("username") %}
+    <header class="navbar navbar-expand-md d-none d-lg-flex d-print-none sticky-top app-topbar">
       <div class="container-fluid">
         <div class="navbar-nav flex-row ms-auto align-items-center gap-2" id="topbar-end">
-          {% if i18n_config.language_switcher and i18n_config.language_switcher | length > 1 %}
-          <div class="nav-item dropdown">
-            <a href="#" class="btn btn-light-soft dropdown-toggle d-flex align-items-center px-3"
-              data-bs-toggle="dropdown" aria-expanded="false" title="{{ _('Language') }}">
-              <i class="fa-solid fa-language me-2"></i>
-              <span>{{ get_locale_display_name(get_locale()) }}</span>
-            </a>
-            <div class="dropdown-menu dropdown-menu-end">
-              {% for code in i18n_config.language_switcher %}
-              <a class="dropdown-item {% if code == get_locale() %}active{% endif %}"
-                href="{{ request.url.include_query_params(lang=code) }}">{{ lang_names[code] }}</a>
-              {% endfor %}
-            </div>
-          </div>
-          {% endif %}
-
-          {% set username = request.session.get("username") %}
+          {{ lang_menu(False) }}
           {% if username %}
-          <div class="nav-item d-none d-sm-flex">
+          <div class="nav-item d-flex">
             <span class="app-chip">
               <span class="app-avatar">{{ username[:1] }}</span>
               <span>{{ username }}<small>{{ t("p.role." ~ request.session.get("role", "admin")) }}</small></span>
             </span>
           </div>
           {% endif %}
-
-          {% if admin.authentication_backend %}
-          <a href="{{ request.url_for('admin:logout') }}" class="btn btn-light-soft btn-icon" title="{{ _('Logout') }}"
-            aria-label="{{ _('Logout') }}">
-            <i class="fa-solid fa-right-from-bracket"></i>
-          </a>
-          {% endif %}
+          {{ logout_button(False) }}
         </div>
       </div>
     </header>

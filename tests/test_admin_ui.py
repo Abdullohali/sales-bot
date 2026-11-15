@@ -43,3 +43,14 @@ async def test_theme_assets_and_layout(panel):  # noqa: F811
     r = panel.get("/admin/client/list?lang=ru")
     assert 'class="app-chip"' in r.text and "Бухгалтер" in r.text  # user chip in the top bar
     assert "Главная" in r.text  # dashboard link in the sidebar
+
+
+async def test_mobile_layout_markup(panel, session):  # noqa: F811
+    """Phone header (one row + collapsible menu), user chip on desktop, translated date filter."""
+    login(panel, "boss")
+    r = panel.get("/admin/sale/list?lang=uz")
+    assert 'id="sidebar-menu"' in r.text and "app-mobile-actions" in r.text
+    assert r.text.count('class="app-chip"') == 1  # desktop top bar
+    assert "app-menu-user" in r.text  # user card inside the phone menu
+    assert "Shartni tanlang" in r.text and "Select operation" not in r.text
+    assert 'type="date"' in r.text  # date filter uses the native date picker

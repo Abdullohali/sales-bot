@@ -315,4 +315,6 @@ MESSAGES: dict[str, str] = {
     "p.del.last_admin": "This is the last active administrator and cannot be deleted.",
     "p.del.button": "Delete",
     "p.del.confirm_many": "{n} selected records will be deleted permanently. Records used in invoices will not be deleted.",
+    "p.flt.operation": "Choose a condition…",
+    "p.flt.value": "Value",
 }

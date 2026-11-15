@@ -1,4 +1,5 @@
 from fastapi import HTTPException
+from markupsafe import Markup
 from sqladmin import ModelView, action
 from sqladmin.filters import BooleanFilter, OperationColumnFilter
 from sqlalchemy import select
@@ -23,6 +24,8 @@ class ActiveFilter(BooleanFilter):
 
 class DateFilter(OperationColumnFilter):
     """sqladmin's OperationColumnFilter with translated operation names."""
+
+    input_type = "date"  # our operation_filter.html shows a date picker
 
     def get_operation_options(self, column_obj):
         return [(op, pt(f"p.op.{op}")) for op, _ in super().get_operation_options(column_obj)]
@@ -205,6 +208,15 @@ class StaffAdmin(LocalizedView, WriteGuard, ModelView, model=Staff):
                 await session.commit()
 
 
+def _local_time(value) -> str:
+    """Timestamps are stored in UTC with microseconds: show local time to the minute."""
+    if value is None:
+        return ""
+    from app.services.clock import local_tz
+
+    return value.astimezone(local_tz()).strftime("%Y-%m-%d %H:%M") if value.tzinfo else value.strftime("%Y-%m-%d %H:%M")
+
+
 class SaleAdmin(LocalizedView, ModelView, model=Sale):
     """Invoices are read-only in the panel; the only change allowed is a soft delete (with audit).
     Never hard-deleted: invoice numbers are a continuous sequence the accountants rely on."""
@@ -223,6 +235,12 @@ class SaleAdmin(LocalizedView, ModelView, model=Sale):
     ]  # fmt: skip
     column_sortable_list = [Sale.id, Sale.sale_date]
     column_default_sort = [(Sale.id, True)]
+    column_formatters_detail = {
+        Sale.created_at: lambda m, a: _local_time(m.created_at),
+        Sale.deleted_at: lambda m, a: _local_time(m.deleted_at),
+        # one invoice line per row instead of a single run-on string (Markup.join escapes each line)
+        "lines_display": lambda m, a: Markup("<br>").join(m.lines_list),
+    }
     column_filters = [
         ActiveFilter(Sale.is_deleted, title=lazy("p.f.deleted")),
         DateFilter(Sale.sale_date, title=lazy("p.f.date")),
