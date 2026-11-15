@@ -313,4 +313,6 @@ MESSAGES: dict[str, str] = {
     "p.del.in_use": "«{name}» is used in {n} invoice(s) and cannot be deleted. Edit it and clear «Active» instead.",
     "p.del.self": "You cannot delete yourself.",
     "p.del.last_admin": "This is the last active administrator and cannot be deleted.",
+    "p.del.button": "Delete",
+    "p.del.confirm_many": "{n} selected records will be deleted permanently. Records used in invoices will not be deleted.",
 }

@@ -113,3 +113,27 @@ async def test_invoices_are_never_hard_deleted(panel, session):  # noqa: F811
     assert panel.delete(f"/admin/sale/delete?pks={sale_id}").status_code == 403
     session.expire_all()
     assert await session.get(Sale, sale_id) is not None
+
+
+async def test_bulk_delete_skips_blocked_rows_and_reports_them(panel, session):  # noqa: F811
+    used, _, _ = await make_sale(session)  # «Ресторан А» is in an invoice
+    free1 = (await catalog.add_client(session, "Bo'sh 1"))[0].id
+    free2 = (await catalog.add_client(session, "Bo'sh 2"))[0].id
+    used_id = used.id
+    login(panel, "boss")
+
+    # the blocked row sits in the middle: the rows after it must still be deleted
+    err = delete(panel, "client", free1, used_id, free2)
+    assert "«Ресторан А»" in err
+    session.expire_all()
+    assert await session.get(Client, free1) is None
+    assert await session.get(Client, free2) is None
+    assert await session.get(Client, used_id) is not None
+
+
+async def test_list_has_header_delete_button_instead_of_row_icons(panel, session):  # noqa: F811
+    await catalog.add_client(session, "Mijoz")
+    login(panel, "boss")
+    r = panel.get("/admin/client/list?lang=uz")
+    assert "bulk-delete" in r.text and '"O\\u02bbchirish"' in r.text
+    assert "Tanlangan {n} ta yozuv" in r.text

@@ -65,6 +65,20 @@ class SafeDelete:
             raise ValueError(pt(key, **params))
         await super().on_model_delete(model, request)
 
+    async def delete_model(self, request: Request, pk) -> None:
+        """Bulk delete: sqladmin stops at the first error, leaving the rest of the selection untouched.
+        Here blocked rows are skipped, the others are deleted, and all reasons are reported together
+        after the last selected row (the list page shows them as one error)."""
+        errors: list[str] = getattr(request.state, "delete_errors", [])
+        request.state.delete_errors = errors
+        try:
+            await super().delete_model(request, pk)
+        except ValueError as e:
+            errors.append(str(e))
+        pks = [p for p in request.query_params.get("pks", "").split(",") if p]
+        if errors and (not pks or str(pk) == pks[-1]):
+            raise ValueError(" ".join(dict.fromkeys(errors)))
+
 
 class WriteGuard(SafeDelete):
     """Accountants can browse everything, only admins can change data."""

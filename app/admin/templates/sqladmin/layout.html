@@ -9,9 +9,49 @@
   // sqladmin's main.js writes an English confirmation into the delete modal; this handler runs after it.
   $(document).on("shown.bs.modal", "#modal-delete", function (event) {
     var el = $(event.relatedTarget);
-    var text = {{ t("p.del.confirm") | tojson }};
-    $("#modal-delete-text").text(text.replace("{name}", el.data("name")).replace("{pk}", el.data("pk") || ""));
+    var count = el.data("count") || 1;
+    var text = count > 1
+      ? {{ t("p.del.confirm_many") | tojson }}.replace("{n}", count)
+      : {{ t("p.del.confirm") | tojson }}.replace("{name}", el.data("name")).replace("{pk}", el.data("pk") || "");
+    $("#modal-delete-text").text(text);
   });
+
+  // List pages: one "Delete" button in the header instead of a trash icon on every row.
+  // It is enabled while at least one row is ticked and deletes all ticked rows (one or many).
+  (function () {
+    var source = document.getElementById("action-delete");  // sqladmin renders it only when deleting is allowed
+    if (!source) return;
+    var label = {{ t("p.del.button") | tojson }};
+
+    $("table tbody a[data-bs-target='#modal-delete']").remove();
+    var menu = $(source).closest(".dropdown-menu");
+    $(source).remove();
+    if (!menu.children().length) menu.closest(".dropdown").css("visibility", "hidden");
+
+    var btn = $('<button type="button" id="bulk-delete" class="btn btn-outline-danger" disabled>')
+      .append('<i class="fa-solid fa-trash me-2"></i>', $("<span>").text(label), $('<span class="ms-1 bulk-count">'));
+    $(".card-header .ms-auto").first().prepend($('<div class="ms-3 d-inline-block">').append(btn));
+
+    function selected() {
+      return $("input.select-box:checked").map(function () { return $(this).siblings("input[type=hidden]").val(); }).get();
+    }
+    function refresh() {
+      var pks = selected();
+      btn.prop("disabled", pks.length === 0);
+      btn.find(".bulk-count").text(pks.length ? "(" + pks.length + ")" : "");
+    }
+    // main.js toggles the boxes from "select all" without firing change events: re-check after it ran.
+    $(document).on("change click", "input.select-box, #select-all", function () { setTimeout(refresh, 0); });
+
+    btn.on("click", function () {
+      var pks = selected();
+      if (!pks.length) return;
+      btn.data({ name: $(source).data("name"), pk: pks.join(", "), count: pks.length,
+                 url: $(source).data("url") + "?pks=" + pks.join(",") });
+      window.tabler.bootstrap.Modal.getOrCreateInstance(document.getElementById("modal-delete")).show(btn[0]);
+    });
+    refresh();
+  })();
 </script>
 {% endblock %}
 
