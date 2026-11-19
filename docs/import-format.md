@@ -79,19 +79,22 @@ Misol:
 | Ustun | Majburiy | Tanilgan sarlavhalar | Izoh |
 |---|---|---|---|
 | Mijoz | **ha** | `Mijoz`, `Mijoz nomi`, `Xaridor` · `Клиент`, `Название клиента`, `Покупатель` · `Client`, `Client name`, `Customer` | Mijoz nomi, botdagi roʻyxatda shunday koʻrinadi |
+| STIR | yoʻq | `STIR`, `JShShIR` · `ИНН`, `ПИНФЛ` · `INN`, `TIN`, `PINFL` | 9 ta raqam (tashkilot) yoki 14 ta raqam (jismoniy shaxs JShShIRi). Boʻsh joy va chiziqchalar olib tashlanadi. Notoʻgʻri boʻlsa qator oʻtkazib yuboriladi. Nakladnoyda xaridor yonida chiqadi |
 
 **Qanday solishtiriladi:**
 - **Nomi boʻyicha** (katta-kichik harf farqsiz): «Kafe Bahor» va «kafe bahor» bitta mijoz hisoblanadi.
-- **Mavjud mijoz:** takrorlanmaydi, «oʻzgarishsiz» deb sanaladi.
+- **Mavjud mijoz:** takrorlanmaydi. Faylda STIR toʻldirilgan va bazadagidan farq qilsa — STIR yangilanadi («yangilangan»), aks holda «oʻzgarishsiz».
+- **Boʻsh STIR** bazadagi STIRni oʻchirmaydi.
+- Bir xil STIR bir nechta mijozda boʻlishi mumkin (masalan, bitta tashkilotning filiallari).
 - **Yashirilgan mijoz:** yana faol boʻladi.
 
 Misol:
 
-| Mijoz |
-|---|
-| Bahor kafesi |
-| «Navroʻz» restorani |
-| Makro Chilonzor |
+| Mijoz | STIR |
+|---|---|
+| Bahor kafesi | 123456789 |
+| «Navroʻz» restorani | |
+| Makro Chilonzor | 30512345678901 |
 
 ## 3. Kuryerlar
 

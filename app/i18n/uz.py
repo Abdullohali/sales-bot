@@ -23,7 +23,7 @@ MESSAGES: dict[str, str] = {
     ),
     "help.admin": (
         "Administrator:\n"
-        "/addclient Nomi · /delclient Nomi · /clients\n"
+        "/addclient Nomi; STIR · /delclient Nomi · /clients\n"
         "/addproduct Nomi; birlik; MXIK; birlik kodi\n"
         "/delproduct Nomi · /products\n"
         "/template — assortiment uchun Excel namunasi (keyin toʻldirilgan faylni yuboring)\n"
@@ -112,7 +112,7 @@ MESSAGES: dict[str, str] = {
     "sales_list.title": "{date} sanasidagi yuk xatlari:",
     "sales_list.none": "{date} sanasida yuk xatlari yoʻq.",
     # ---------- bot: admin commands ----------
-    "fmt.addclient": "Format: /addclient Nomi",
+    "fmt.addclient": "Format: /addclient Nomi; STIR\nSTIR ixtiyoriy: 9 raqam (tashkilot) yoki 14 raqam (JShShIR).\nMisol: /addclient Bahor kafesi; 123456789",
     "fmt.delclient": "Format: /delclient Nomi",
     "fmt.addproduct": "Format: /addproduct Nomi; birlik; MXIK; birlik kodi\nMasalan: /addproduct Pomidor; kg",
     "fmt.delproduct": "Format: /delproduct Nomi",
@@ -123,6 +123,8 @@ MESSAGES: dict[str, str] = {
     "fmt.delsale": "Format: /delsale №",
     "client.added": "Mijoz qoʻshildi: {name}",
     "client.exists": "Bunday mijoz bor: {name}",
+    "client.inn": "STIR: {inn}",
+    "client.bad_inn": "STIR «{inn}» notoʻgʻri: 9 raqam (tashkilot) yoki 14 raqam (JShShIR) boʻlishi kerak. Mijoz saqlanmadi.",
     "client.hidden": "«{name}» mijozi yashirildi (sotuvlar tarixi saqlanadi).",
     "client.not_found": "Mijoz topilmadi.",
     "clients.none": "Mijozlar yoʻq. Qoʻshish: /addclient Nomi",
@@ -172,6 +174,7 @@ MESSAGES: dict[str, str] = {
     "col.date": "Sana",
     "col.invoice_no": "Yuk xati №",
     "col.client": "Mijoz",
+    "col.client_inn": "Mijoz STIR",
     "col.courier": "Kuryer",
     "col.product": "Mahsulot",
     "col.ikpu": "MXIK",
@@ -183,6 +186,7 @@ MESSAGES: dict[str, str] = {
     "tpl.name": "Nomi",
     "tpl.unit": "Oʻlchov birligi",
     "tpl.ikpu": "MXIK",
+    "tpl.inn": "STIR",
     "tpl.unit_code": "Birlik kodi",
     "tpl.sample_name": "Pomidor",
     "tpl.sample_unit": "kg",
@@ -207,6 +211,8 @@ MESSAGES: dict[str, str] = {
     "p.f.active": "Faol",
     "p.f.unit": "Birlik",
     "p.f.ikpu": "MXIK",
+    "p.f.inn": "STIR",
+    "p.f.inn_hint": "Ixtiyoriy. 9 raqam (tashkilot STIRi) yoki 14 raqam (jismoniy shaxs JShShIRi).",
     "p.f.unit_code": "Birlik kodi",
     "p.f.tg_id": "Telegram ID",
     "p.f.person_name": "Ism",
@@ -278,10 +284,11 @@ MESSAGES: dict[str, str] = {
     "xl.too_many_rows": "Qatorlar juda koʻp: {n} (maksimum {max}). Faylni qismlarga boʻling.",
     "xl.wrong_kind": "Bu «{kind}» boʻlimi uchun fayl koʻrinadi. Uni oʻsha boʻlimda yuklang.",
     "xl.row_missing": "{n}-qator: «{col}» toʻldirilmagan — oʻtkazib yuborildi",
+    "xl.row_bad_inn": "{n}-qator: STIR «{v}» 9 yoki 14 ta raqamdan iborat boʻlishi kerak — oʻtkazib yuborildi",
     "xl.row_bad_tg_id": "{n}-qator: Telegram ID «{v}» faqat raqamlardan iborat boʻlishi kerak — oʻtkazib yuborildi",
     "xl.row_duplicate": "{n}-qator: «{v}» faylda yuqorida bor — oʻtkazib yuborildi",
     "p.i.note.products": "Mahsulotlar nomi boʻyicha solishtiriladi: mavjudlari yangilanadi, yangilari qoʻshiladi. Boʻsh MXIK va kod saqlangan qiymatlarni oʻchirmaydi. 17 ta raqamdan iborat boʻlmagan MXIK ogohlantirish bilan saqlanadi.",
-    "p.i.note.clients": "Mijozlar nomi boʻyicha solishtiriladi (katta-kichik harf farqsiz): mavjudlari takrorlanmaydi, yashirilganlari yana faol boʻladi.",
+    "p.i.note.clients": "Mijozlar nomi boʻyicha solishtiriladi (katta-kichik harf farqsiz): mavjudlari takrorlanmaydi, yashirilganlari yana faol boʻladi. STIR toʻldirilgan boʻlsa yangilanadi, boʻsh boʻlsa saqlangani oʻchmaydi.",
     "p.i.note.couriers": "Kuryerlar Telegram ID boʻyicha solishtiriladi: mavjudlarining ismi yangilanadi, oʻchirilganlari yana yoqiladi. Kuryer oʻz ID raqamini botda /myid buyrugʻi bilan biladi.",
     "p.i.formats": "Formatlar: .xlsx va .csv (UTF-8 yoki Windows-1251, ajratuvchi «,» yoki «;»). 5000 qatorgacha va 10 MB gacha. Xato qatorlar oʻtkazib yuboriladi va pastda koʻrsatiladi, qolganlari saqlanadi.",
     "p.i.too_big": "Fayl juda katta (maksimum 10 MB).",
@@ -310,6 +317,7 @@ MESSAGES: dict[str, str] = {
     "p.staff_plural": "Xodimlar",
     "p.f.phone": "Telefon",
     "p.role.courier": "Kuryer",
+    "p.err.bad_inn": "STIR notoʻgʻri: 9 raqam (tashkilot) yoki 14 raqam (JShShIR) boʻlishi kerak.",
     "p.err.bad_phone": "Telefon raqam notoʻgʻri. Masalan: +998 90 123 45 67",
     "p.err.phone_taken": "Bu raqam boshqa xodimga biriktirilgan.",
     "p.del.confirm": "«{name}» #{pk} butunlay oʻchiriladi, buni qaytarib boʻlmaydi. Yuk xatlarida ishlatilgan yozuvni tizim oʻchirmaydi.",

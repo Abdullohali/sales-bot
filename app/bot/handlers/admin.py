@@ -29,12 +29,19 @@ def _arg(command: CommandObject) -> str:
 
 @router.message(Command("addclient"))
 async def addclient(msg: Message, command: CommandObject, session: AsyncSession, lang: str) -> None:
-    name = _arg(command)
-    if not name:
+    name, _, inn = _arg(command).partition(";")
+    if not name.strip():
         await msg.answer(t(lang, "fmt.addclient"))
         return
-    client, created = await catalog.add_client(session, name)
-    await msg.answer(t(lang, "client.added" if created else "client.exists", name=client.name))
+    try:
+        client, created = await catalog.add_client(session, name, inn)
+    except catalog.InvalidInn as e:
+        await msg.answer(t(lang, "client.bad_inn", inn=str(e)))
+        return
+    text = t(lang, "client.added" if created else "client.exists", name=client.name)
+    if client.inn:
+        text += "\n" + t(lang, "client.inn", inn=client.inn)
+    await msg.answer(text)
 
 
 @router.message(Command("delclient"))
@@ -53,7 +60,10 @@ async def clients(msg: Message, session: AsyncSession, lang: str) -> None:
     if not rows:
         await msg.answer(t(lang, "clients.none"))
         return
-    text = t(lang, "clients.title", n=total) + "\n" + "\n".join(f"{i}. {c.name}" for i, c in enumerate(rows, 1))
+    lines = [
+        f"{i}. {c.name}" + (f" · {t(lang, 'client.inn', inn=c.inn)}" if c.inn else "") for i, c in enumerate(rows, 1)
+    ]
+    text = t(lang, "clients.title", n=total) + "\n" + "\n".join(lines)
     await answer_long(msg, text)
 
 

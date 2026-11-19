@@ -20,7 +20,7 @@ MESSAGES: dict[str, str] = {
     ),
     "help.admin": (
         "Administrator:\n"
-        "/addclient Name · /delclient Name · /clients\n"
+        "/addclient Name; TIN · /delclient Name · /clients\n"
         "/addproduct Name; unit; IKPU; unit code\n"
         "/delproduct Name · /products\n"
         "/template — Excel template for the product list (then send the filled file)\n"
@@ -109,7 +109,7 @@ MESSAGES: dict[str, str] = {
     "sales_list.title": "Invoices for {date}:",
     "sales_list.none": "No invoices for {date}.",
     # ---------- bot: admin commands ----------
-    "fmt.addclient": "Format: /addclient Name",
+    "fmt.addclient": "Format: /addclient Name; TIN\nTIN is optional: 9 digits (company) or 14 digits (PINFL).\nExample: /addclient Bahor Cafe; 123456789",
     "fmt.delclient": "Format: /delclient Name",
     "fmt.addproduct": "Format: /addproduct Name; unit; IKPU; unit code\nExample: /addproduct Tomatoes; kg",
     "fmt.delproduct": "Format: /delproduct Name",
@@ -120,6 +120,8 @@ MESSAGES: dict[str, str] = {
     "fmt.delsale": "Format: /delsale №",
     "client.added": "Client added: {name}",
     "client.exists": "Client already exists: {name}",
+    "client.inn": "TIN: {inn}",
+    "client.bad_inn": "TIN «{inn}» is invalid: it must be 9 digits (company) or 14 digits (PINFL). The client was not saved.",
     "client.hidden": "Client «{name}» hidden (sales history is kept).",
     "client.not_found": "Client not found.",
     "clients.none": "No clients. Add one: /addclient Name",
@@ -169,6 +171,7 @@ MESSAGES: dict[str, str] = {
     "col.date": "Date",
     "col.invoice_no": "Invoice №",
     "col.client": "Client",
+    "col.client_inn": "Client TIN",
     "col.courier": "Courier",
     "col.product": "Product",
     "col.ikpu": "IKPU",
@@ -180,6 +183,7 @@ MESSAGES: dict[str, str] = {
     "tpl.name": "Name",
     "tpl.unit": "Unit",
     "tpl.ikpu": "IKPU",
+    "tpl.inn": "TIN",
     "tpl.unit_code": "Unit code",
     "tpl.sample_name": "Tomatoes",
     "tpl.sample_unit": "kg",
@@ -204,6 +208,8 @@ MESSAGES: dict[str, str] = {
     "p.f.active": "Active",
     "p.f.unit": "Unit",
     "p.f.ikpu": "IKPU",
+    "p.f.inn": "TIN",
+    "p.f.inn_hint": "Optional. 9 digits (company TIN) or 14 digits (individual PINFL).",
     "p.f.unit_code": "Unit code",
     "p.f.tg_id": "Telegram ID",
     "p.f.person_name": "Name",
@@ -275,10 +281,11 @@ MESSAGES: dict[str, str] = {
     "xl.too_many_rows": "Too many rows: {n} (max {max}). Split the file into parts.",
     "xl.wrong_kind": "This looks like a file for «{kind}». Import it in that section.",
     "xl.row_missing": "Row {n}: «{col}» is empty — skipped",
+    "xl.row_bad_inn": "Row {n}: TIN «{v}» must be 9 or 14 digits — skipped",
     "xl.row_bad_tg_id": "Row {n}: Telegram ID «{v}» must contain digits only — skipped",
     "xl.row_duplicate": "Row {n}: «{v}» already appears above in the file — skipped",
     "p.i.note.products": "Products are matched by name: existing ones are updated, new ones are added. Empty IKPU and code do not erase saved values. An IKPU that is not 17 digits is saved with a warning.",
-    "p.i.note.clients": "Clients are matched by name (case-insensitive): existing ones are not duplicated, hidden ones become active again.",
+    "p.i.note.clients": "Clients are matched by name (case-insensitive): existing ones are not duplicated, hidden ones become active again. A filled TIN is updated, an empty one does not erase the saved TIN.",
     "p.i.note.couriers": "Couriers are matched by Telegram ID: existing ones get the new name, disabled ones are enabled again. A courier gets their ID with /myid in the bot.",
     "p.i.formats": "Formats: .xlsx and .csv (UTF-8 or Windows-1251, separator «,» or «;»). Up to 5000 rows and 10 MB. Rows with errors are skipped and listed below, the rest is saved.",
     "p.i.too_big": "File is too large (max 10 MB).",
@@ -307,6 +314,7 @@ MESSAGES: dict[str, str] = {
     "p.staff_plural": "Staff",
     "p.f.phone": "Phone",
     "p.role.courier": "Courier",
+    "p.err.bad_inn": "Invalid TIN: it must be 9 digits (company) or 14 digits (PINFL).",
     "p.err.bad_phone": "Invalid phone number. Example: +998 90 123 45 67",
     "p.err.phone_taken": "This number already belongs to another staff member.",
     "p.del.confirm": "«{name}» #{pk} will be deleted permanently. Records used in invoices will not be deleted.",

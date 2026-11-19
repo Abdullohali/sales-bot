@@ -5,13 +5,14 @@ but only when nothing references it (see `delete_blocker`)."""
 import re
 from dataclasses import dataclass, field
 
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models import AdminUser, BotUser, Client, Courier, Product, Sale, SaleItem, Staff
 from app.i18n import t
 
 IKPU_RE = re.compile(r"^\d{17}$")
+INN_LENGTHS = (9, 14)  # STIR of a company / JShShIR (PINFL) of an individual
 
 
 def _norm_name(name: str) -> str:
@@ -39,7 +40,12 @@ async def list_page(
     """Active rows ordered by name. Returns (rows, total_count)."""
     cond = [model.active.is_(True)]
     if search:
-        cond.append(model.name.ilike(f"%{search.strip()}%"))
+        search = search.strip()
+        match = model.name.ilike(f"%{search}%")
+        digits = re.sub(r"\s", "", search)
+        if model is Client and digits.isdigit():  # clients can also be found by (part of) the INN
+            match = or_(match, Client.inn.like(f"%{digits}%"))
+        cond.append(match)
     total = await session.scalar(select(func.count()).select_from(model).where(*cond))
     stmt = select(model).where(*cond).order_by(model.name).offset(offset)
     if limit:
@@ -55,17 +61,41 @@ async def _by_name(session: AsyncSession, model, name: str):
 # ---------- clients ----------
 
 
-async def add_client(session: AsyncSession, name: str) -> tuple[Client, bool]:
-    """Create client, or re-activate a soft-deleted one. Returns (client, created)."""
+class InvalidInn(ValueError):
+    pass
+
+
+def normalize_inn(raw) -> str | None:
+    """'123 456 789' / '123-456-789' -> '123456789'; None if empty.
+    Raises InvalidInn unless it is 9 digits (company STIR) or 14 digits (individual JShShIR)."""
+    if raw is None:
+        return None
+    if isinstance(raw, float) and raw.is_integer():  # Excel cell stored as a number
+        raw = int(raw)
+    s = re.sub(r"[\s\-]", "", str(raw))
+    if not s:
+        return None
+    if not s.isdigit() or len(s) not in INN_LENGTHS:
+        raise InvalidInn(str(raw).strip())
+    return s
+
+
+async def add_client(session: AsyncSession, name: str, inn=None) -> tuple[Client, bool]:
+    """Create client, or re-activate a soft-deleted one. Returns (client, created).
+    A given INN is set (also on an existing client); an empty one never erases the stored INN.
+    Raises InvalidInn before anything is saved."""
     name = _norm_name(name)
     if not name:
         raise ValueError("Пустое название клиента")
+    inn = normalize_inn(inn)
     client = await _by_name(session, Client, name)
     if client:
         created = not client.active
         client.active = True
+        if inn:
+            client.inn = inn
     else:
-        client = Client(name=name, active=True)
+        client = Client(name=name, inn=inn, active=True)
         session.add(client)
         created = True
     await session.commit()
@@ -170,17 +200,24 @@ async def import_products(session: AsyncSession, rows: list[dict], lang: str | N
 
 async def import_clients(session: AsyncSession, rows: list[dict]) -> ImportResult:
     """Bulk add clients by name (all-or-nothing). Existing ones are not duplicated,
-    hidden ones become active again."""
+    hidden ones become active again. A filled INN is set; an empty one keeps the stored INN.
+    Rows come from importer.parse(), where the INN is already validated."""
     res = ImportResult()
     for row in rows:
         name = _norm_name(row["name"])
+        inn = normalize_inn(row.get("inn"))
         client = await _by_name(session, Client, name)
         if client is None:
-            session.add(Client(name=name, active=True))
+            session.add(Client(name=name, inn=inn, active=True))
             res.created += 1
         elif not client.active:
             client.active = True
+            if inn:
+                client.inn = inn
             res.created += 1
+        elif inn and client.inn != inn:
+            client.inn = inn
+            res.updated += 1
         else:
             res.unchanged += 1
         await session.flush()

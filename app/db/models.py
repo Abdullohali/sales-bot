@@ -14,6 +14,9 @@ class Client(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column(String(200), unique=True)
+    # STIR / ИНН: 9 digits (company) or 14 digits (individual, JShShIR/ПИНФЛ). Optional and not unique:
+    # several branches of one company are separate clients with the same INN.
+    inn: Mapped[str | None] = mapped_column(String(14), index=True)
     active: Mapped[bool] = mapped_column(default=True, server_default=true())  # soft delete
 
     def __str__(self) -> str:

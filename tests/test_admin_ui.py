@@ -54,3 +54,26 @@ async def test_mobile_layout_markup(panel, session):  # noqa: F811
     assert "app-menu-user" in r.text  # user card inside the phone menu
     assert "Shartni tanlang" in r.text and "Select operation" not in r.text
     assert 'type="date"' in r.text  # date filter uses the native date picker
+
+
+async def test_client_form_inn(panel, session):  # noqa: F811
+    """INN field in the client form: validated (9 or 14 digits), spaces removed, searchable in the list."""
+    from sqlalchemy import select
+
+    from app.db.models import Client
+
+    login(panel, "boss")
+    r = panel.get("/admin/client/create?lang=uz")
+    assert 'name="inn"' in r.text and "JShShIR" in r.text
+
+    r = panel.post("/admin/client/create?lang=uz", data={"name": "Kafe X", "inn": "12345", "active": "y"})
+    assert "STIR notoʻgʻri" in r.text
+    assert (await session.scalars(select(Client))).all() == []
+
+    data = {"name": "Kafe X", "inn": "123 456 789", "active": "y"}
+    r = panel.post("/admin/client/create", data=data, follow_redirects=False)
+    assert r.status_code in (302, 303)
+    assert (await session.scalar(select(Client.inn).where(Client.name == "Kafe X"))) == "123456789"
+
+    r = panel.get("/admin/client/list?lang=uz&search=123456789")
+    assert "Kafe X" in r.text and "STIR" in r.text

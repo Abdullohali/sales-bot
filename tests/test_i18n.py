@@ -157,7 +157,7 @@ async def test_sale_flow_in_uzbek_and_invoice_per_recipient_language(h, session)
 async def test_admin_commands_in_english(h):
     await h.click(ADMIN, LangCB(code="en").pack())
     out = await h.text(ADMIN, "/addclient")
-    assert texts(out) == "Format: /addclient Name"
+    assert texts(out).startswith("Format: /addclient Name; TIN")
     out = await h.text(ADMIN, "/report 12-11-2026")
     assert "YYYY-MM-DD" in texts(out) and "/report" in texts(out)
     out = await h.text(ADMIN, "/addproduct Огурцы; кг; 123")

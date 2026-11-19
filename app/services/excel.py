@@ -54,7 +54,8 @@ def build_invoice_xlsx(sale: Sale, company_name: str, company_inn: str, lang: st
     ws["A1"] = t(lang, "xl.invoice_title", id=sale.id, date=fmt_date(sale.sale_date))
     ws["A1"].font = Font(bold=True, size=14)
     ws["A3"] = t(lang, "xl.supplier", name=company_name) + (t(lang, "xl.inn", inn=company_inn) if company_inn else "")
-    ws["A4"] = t(lang, "xl.buyer", name=sale.client.name)
+    buyer_inn = t(lang, "xl.inn", inn=sale.client.inn) if sale.client.inn else ""
+    ws["A4"] = t(lang, "xl.buyer", name=sale.client.name) + buyer_inn
     ws["A5"] = t(lang, "xl.courier", name=sale.courier.name)
     if sale.is_deleted:
         ws["A6"] = t(lang, "xl.deleted")
@@ -116,7 +117,7 @@ def build_invoice_xlsx(sale: Sale, company_name: str, company_inn: str, lang: st
 # ---------- sales export ----------
 
 EXPORT_COLUMNS = [
-    "col.date", "col.invoice_no", "col.client", "col.courier", "col.product", "col.ikpu", "col.unit",
+    "col.date", "col.invoice_no", "col.client", "col.client_inn", "col.courier", "col.product", "col.ikpu", "col.unit",
     "col.qty", "col.price_ex", "col.sum_ex", "vat", "col.sum_total",
 ]  # fmt: skip
 
@@ -147,6 +148,7 @@ def build_sales_export(sales: list[Sale], lang: str | None = None) -> bytes:
                 fmt_date(s.sale_date),
                 s.id,
                 s.client.name,
+                s.client.inn or "",
                 s.courier.name,
                 item.product.name,
                 item.product.ikpu or "",
@@ -158,12 +160,13 @@ def build_sales_export(sales: list[Sale], lang: str | None = None) -> bytes:
                 _num(a.total),
             ])  # fmt: skip
             row = ws.max_row
-            ws.cell(row=row, column=6).number_format = TEXT_FMT
-            ws.cell(row=row, column=8).number_format = QTY_FMT
-            for col in (9, 10, 11, 12):
+            for col in (4, 7):  # INN, IKPU: digit codes stay text
+                ws.cell(row=row, column=col).number_format = TEXT_FMT
+            ws.cell(row=row, column=9).number_format = QTY_FMT
+            for col in (10, 11, 12, 13):
                 ws.cell(row=row, column=col).number_format = MONEY_FMT
     ws.freeze_panes = "A2"
-    _widths(ws, [12, 12, 28, 18, 28, 20, 7, 10, 14, 16, 14, 16])
+    _widths(ws, [12, 12, 28, 16, 18, 28, 20, 7, 10, 14, 16, 14, 16])
     return _to_bytes(wb)
 
 

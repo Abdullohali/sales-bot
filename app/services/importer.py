@@ -18,6 +18,7 @@ from openpyxl.styles import Font
 from openpyxl.utils import get_column_letter
 
 from app.i18n import CATALOGS, t
+from app.services.catalog import InvalidInn, normalize_inn
 
 KINDS = ("products", "clients", "couriers")
 MAX_ROWS = 5000
@@ -41,7 +42,10 @@ SCHEMAS: dict[str, list[Column]] = {
         Column("ikpu", "tpl.ikpu", text=True, width=22),
         Column("unit_code", "tpl.unit_code", text=True, width=14),
     ],
-    "clients": [Column("name", "tpl.client_name", required=True, width=40)],
+    "clients": [
+        Column("name", "tpl.client_name", required=True, width=40),
+        Column("inn", "tpl.inn", text=True, width=18),
+    ],
     "couriers": [
         Column("tg_id", "tpl.tg_id", required=True, text=True, width=18),
         Column("name", "tpl.courier_name", required=True, width=32),
@@ -64,6 +68,8 @@ ALIASES: dict[str, dict[str, str]] = {
         "клиент": "name", "название клиента": "name", "клиенты": "name", "покупатель": "name",
         "mijoz": "name", "mijoz nomi": "name", "mijozlar": "name", "xaridor": "name",
         "client": "name", "client name": "name", "clients": "name", "customer": "name",
+        "stir": "inn", "inn": "inn", "инн": "inn", "tin": "inn", "jshshir": "inn", "pinfl": "inn", "пинфл": "inn",
+        "stir/jshshir": "inn", "инн/пинфл": "inn", "inn/pinfl": "inn", "tin/pinfl": "inn",
     },
     "couriers": {
         "telegram id": "tg_id", "telegram": "tg_id", "tg id": "tg_id", "tg_id": "tg_id", "id": "tg_id",
@@ -92,7 +98,7 @@ def _examples(kind: str, lang: str | None) -> list[list[str]]:
     if kind == "products":
         return [[t(lang, "tpl.sample_name"), t(lang, "tpl.sample_unit"), "00000000000000000", ""]]
     if kind == "clients":
-        return [[t(lang, "tpl.sample_client")]]
+        return [[t(lang, "tpl.sample_client"), "123456789"]]
     return [["123456789", t(lang, "tpl.sample_courier")]]
 
 
@@ -249,6 +255,12 @@ def parse(kind: str, data: bytes, filename: str = "", lang: str | None = None) -
         if missing:
             errors.append(t(lang, "xl.row_missing", n=line_no, col=t(lang, cols[missing[0]].label)))
             continue
+        if kind == "clients" and rec.get("inn"):
+            try:
+                rec["inn"] = normalize_inn(rec["inn"])
+            except InvalidInn:
+                errors.append(t(lang, "xl.row_bad_inn", n=line_no, v=rec["inn"]))
+                continue
 
         if kind == "couriers":
             tg_id = rec["tg_id"].replace(" ", "")

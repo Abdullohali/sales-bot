@@ -12,7 +12,14 @@ from wtforms.validators import Optional
 from app.admin.auth import ROLES, current_user, hash_password, is_admin
 from app.admin.i18n import lazy, pt
 from app.db.models import AdminUser, Client, Courier, Product, Sale, SaleItem, Staff
-from app.services.catalog import STAFF_ROLES, delete_blocker, normalize_phone, revoke_staff_access
+from app.services.catalog import (
+    STAFF_ROLES,
+    InvalidInn,
+    delete_blocker,
+    normalize_inn,
+    normalize_phone,
+    revoke_staff_access,
+)
 
 
 class ActiveFilter(BooleanFilter):
@@ -106,13 +113,20 @@ class ClientAdmin(FileImport, LocalizedView, WriteGuard, ModelView, model=Client
     name = lazy("p.client")
     name_plural = lazy("p.clients")
     icon = "fa-solid fa-store"
-    column_list = [Client.id, Client.name, Client.active]
-    column_searchable_list = [Client.name]
-    column_sortable_list = [Client.name, Client.active]
+    column_list = [Client.id, Client.name, Client.inn, Client.active]
+    column_searchable_list = [Client.name, Client.inn]
+    column_sortable_list = [Client.name, Client.inn, Client.active]
     column_filters = [ActiveFilter(Client.active, title=lazy("p.f.active"))]
     column_default_sort = [(Client.name, False)]
-    column_labels = {Client.name: lazy("p.f.name"), Client.active: lazy("p.f.active")}
-    form_columns = [Client.name, Client.active]
+    column_labels = {Client.name: lazy("p.f.name"), Client.inn: lazy("p.f.inn"), Client.active: lazy("p.f.active")}
+    form_columns = [Client.name, Client.inn, Client.active]
+    form_args = {"inn": {"description": lazy("p.f.inn_hint")}}
+
+    async def on_model_change(self, data: dict, model: Client, is_created: bool, request: Request) -> None:
+        try:
+            data["inn"] = normalize_inn(data.get("inn"))
+        except InvalidInn:
+            raise ValueError(pt("p.err.bad_inn")) from None
 
 
 class ProductAdmin(FileImport, LocalizedView, WriteGuard, ModelView, model=Product):

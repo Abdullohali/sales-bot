@@ -172,7 +172,46 @@ async def test_export_one_row_per_item(session):
     )
     ws = load_workbook(BytesIO(build_sales_export(await list_sales(session, DAY)))).active
     assert ws.max_row == 3
-    assert [c.value for c in ws[2]][:7] == ["2026-11-12", 1, "Ресторан А", "Али", "Помидоры", "12345678901234567", "кг"]
+    row = [c.value for c in ws[2]][:8]
+    assert row == ["2026-11-12", 1, "Ресторан А", None, "Али", "Помидоры", "12345678901234567", "кг"]
+
+
+async def test_client_inn_in_invoice_and_export(session):
+    c1, _, tomato, _, courier = await _setup(session)
+    await catalog.add_client(session, c1.name, "123 456 789")  # existing client: INN is set
+    sale = await _sale(session, c1, courier, [build_item(tomato, D("1"), D("100"), NO_VAT, D("12"))])
+    ws = load_workbook(BytesIO(build_invoice_xlsx(sale, "ООО Тест", ""))).active
+    assert ws["A4"].value == "Покупатель: Ресторан А, ИНН 123456789"
+    ws = load_workbook(BytesIO(build_sales_export(await list_sales(session, DAY)))).active
+    assert ws["C1"].value == "Клиент" and ws["D1"].value == "ИНН клиента"
+    assert ws["D2"].value == "123456789" and ws["D2"].number_format == "@"
+
+
+@pytest.mark.parametrize(
+    ("raw", "expected"),
+    [(None, None), ("", None), ("  ", None), ("123 456 789", "123456789"), ("123-456-789", "123456789"),
+     (123456789, "123456789"), (12345678901234.0, "12345678901234"), ("31234567890123", "31234567890123")],
+)  # fmt: skip
+def test_normalize_inn(raw, expected):
+    assert catalog.normalize_inn(raw) == expected
+
+
+@pytest.mark.parametrize("raw", ["12345678", "1234567890", "12345678a", "1234567890123456"])
+def test_normalize_inn_rejects(raw):
+    with pytest.raises(catalog.InvalidInn):
+        catalog.normalize_inn(raw)
+
+
+async def test_add_client_inn_rules(session):
+    c, _ = await catalog.add_client(session, "Alpha", "123456789")
+    await catalog.add_client(session, "alpha")  # empty INN keeps the stored one
+    assert c.inn == "123456789"
+    with pytest.raises(catalog.InvalidInn):
+        await catalog.add_client(session, "Beta", "12")
+    assert (await catalog.list_page(session, catalog.Client))[1] == 1  # nothing saved
+    await catalog.add_client(session, "Gamma", "123456789")  # branches may share an INN
+    rows, total = await catalog.list_page(session, catalog.Client, search="456 78")
+    assert total == 2 and [r.name for r in rows] == ["Alpha", "Gamma"]
 
 
 async def test_template_and_import_roundtrip(session):

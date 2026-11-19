@@ -123,6 +123,29 @@ async def test_import_clients(session):
     assert names == ["Новый клиент", "Ресторан А", "Старый"]
 
 
+async def test_import_clients_inn(session):
+    await catalog.add_client(session, "Kafe A", "111111111")
+    await catalog.add_client(session, "Kafe B", "222222222")
+    data = xlsx(
+        ["Mijoz", "STIR"],
+        ["Kafe A", None],  # empty INN: unchanged, stored INN kept
+        ["Kafe B", "333 333 333"],  # new INN: updated
+        ["Kafe C", 12345678901234],  # number cell, 14 digits (JShShIR)
+        ["Kafe D", "12345"],  # invalid: skipped
+    )
+    parsed = importer.parse("clients", data, "c.xlsx", "uz")
+    assert parsed.errors == [t("uz", "xl.row_bad_inn", n=5, v="12345")]
+    res = await catalog.import_clients(session, parsed.rows)
+    assert (res.created, res.updated, res.unchanged) == (1, 1, 1)
+    inns = dict((await session.execute(select(Client.name, Client.inn))).all())
+    assert inns == {"Kafe A": "111111111", "Kafe B": "333333333", "Kafe C": "12345678901234"}
+
+
+def test_clients_file_without_inn_column_still_works():
+    parsed = importer.parse_any(xlsx(["Клиент"], ["Ресторан"]), "c.xlsx")
+    assert parsed.kind == "clients" and parsed.rows == [{"name": "Ресторан"}]
+
+
 async def test_import_couriers(session):
     await catalog.set_courier(session, 1, "Ali")
     await catalog.set_courier(session, 2, "Vali")

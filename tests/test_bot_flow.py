@@ -208,3 +208,14 @@ async def test_search_client_by_text(h):
     await h.text(COURIER, BTN_NEW_SALE)
     out = await h.text(COURIER, "ресторан")
     assert "найдено" in texts(out)
+
+
+async def test_addclient_with_inn(h, session):
+    from app.i18n import t
+
+    out = texts(await h.text(ADMIN, "/addclient Kafe Bahor; 123 456 789"))
+    assert "Kafe Bahor" in out and "123456789" in out
+    out = texts(await h.text(ADMIN, "/addclient Kafe Yangi; 12"))
+    assert out == t("ru", "client.bad_inn", inn="12")
+    out = texts(await h.text(ADMIN, "/clients"))
+    assert "Kafe Bahor" in out and "123456789" in out and "Kafe Yangi" not in out
